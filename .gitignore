@@ -1,6 +1,4 @@
 /bin/*
-/build/gmake
-/build/vs*/
 /intermediate
 result/result.csv
 result/result.html
@@ -9,3 +7,6 @@ result/result.html
 /.vs/dtoa-benchmark/v16/.suo
 /.vs/dtoa-benchmark/v16/Browse.VC.db
 /.vs/dtoa-benchmark/v16/Browse.VC.opendb
+/build/vs2019/.vs/benchmark/v16/ipch/AutoPCH
+/build/vs2019/.vs/benchmark/v16
+/build/gmake

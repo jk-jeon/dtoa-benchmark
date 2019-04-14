@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="double-conversion">
+      <UniqueIdentifier>{536A9BB0-BF80-9946-08F8-2468744D6ACE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="emyg">
+      <UniqueIdentifier>{7751967C-6388-970D-0C75-7D10F88A130F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="floaxie">
+      <UniqueIdentifier>{4DD370B3-B9B2-EF4E-C2CA-7A252E2956B0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fpconv">
+      <UniqueIdentifier>{B11DF0FD-9DBF-1AD4-867A-2E2872BBA124}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="gay">
+      <UniqueIdentifier>{0676880B-727F-887C-FBFA-9E7C6703947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="grisu">
+      <UniqueIdentifier>{2F2D870F-9B41-AFC0-64C3-5220D096ABF1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jkl">
+      <UniqueIdentifier>{0684880B-728D-887C-FB08-9F7C6711947C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="milo">
+      <UniqueIdentifier>{D6A19A7C-C2D8-9B0D-6BC5-811057DB170F}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="msinttypes">
+      <UniqueIdentifier>{25A0A853-1158-EAA0-7A5F-C3FC66368591}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fmt">
+      <UniqueIdentifier>{ec3c20e3-9845-4188-ba25-24cc451f1938}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\double-conversion\bignum-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\bignum.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\cached-powers.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\diy-fp.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\double-conversion.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\fast-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\fixed-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\ieee.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\strtod.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\utils.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\emyg\emyg_dtoa.h">
+      <Filter>emyg</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\atof.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\bit_ops.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\cached_power.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\conversion_status.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\default_fallback.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\diy_fp.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\fraction.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\ftoa.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\grisu.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\huge_val.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\integer_of_size.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\k_comp.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\krosh.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\memwrap.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\powers_ten.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\powers_ten_double.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\powers_ten_single.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\prettify.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\print.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\static_pow.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\floaxie\type_punning_cast.h">
+      <Filter>floaxie</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fpconv\fpconv.h">
+      <Filter>fpconv</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fpconv\powers.h">
+      <Filter>fpconv</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\diy_fp.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\double.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\fast_exponent.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\grisu2.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\k_comp.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\powers.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\powers_ten_round64.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\grisu\prettify.h">
+      <Filter>grisu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\jkl\grisu.h">
+      <Filter>jkl</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\milo\dtoa_milo.h">
+      <Filter>milo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\msinttypes\inttypes.h">
+      <Filter>msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\msinttypes\stdint.h">
+      <Filter>msinttypes</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\resultfilename.h" />
+    <ClInclude Include="..\..\src\test.h" />
+    <ClInclude Include="..\..\src\timer.h" />
+    <ClInclude Include="..\..\src\fmt\core.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt\format-inl.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt\format.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\bignum.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\cached-powers.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\diy-fp.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\double-conversion.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\strtod.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\doubleconvtest.cpp" />
+    <ClCompile Include="..\..\src\emygtest.cpp" />
+    <ClCompile Include="..\..\src\floaxietest.cpp" />
+    <ClCompile Include="..\..\src\fpconv\fpconv.c">
+      <Filter>fpconv</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\fpconvtest.cpp" />
+    <ClCompile Include="..\..\src\gay\dtoa.c">
+      <Filter>gay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gay\g_fmt.c">
+      <Filter>gay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gaytest.cpp" />
+    <ClCompile Include="..\..\src\grisu\grisu2b_59_56.c">
+      <Filter>grisu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\grisu2btest.cpp" />
+    <ClCompile Include="..\..\src\jklgrisu.cpp" />
+    <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\milotest.cpp" />
+    <ClCompile Include="..\..\src\null.cpp" />
+    <ClCompile Include="..\..\src\ostringstream.cpp" />
+    <ClCompile Include="..\..\src\ostrstream.cpp" />
+    <ClCompile Include="..\..\src\sprintf.cpp" />
+    <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc">
+      <Filter>emyg</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\to_chars.cpp" />
+    <ClCompile Include="..\..\src\fmttest.cpp" />
+  </ItemGroup>
+</Project>
