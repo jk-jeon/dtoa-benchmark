@@ -44,8 +44,9 @@ namespace {
 
 void dtoa_jkl(double v, char* buffer)
 {
-	char intermediate_buffer[20];
-	char* const last_letter = intermediate_buffer + sizeof(intermediate_buffer);
+	char intermediate_buffer[41];
+	char* const last_letter = intermediate_buffer + sizeof(intermediate_buffer) - 1;
+	last_letter[0] = '\0';
 
 	auto g = grisu_impl<double>::grisu2(v);
 
