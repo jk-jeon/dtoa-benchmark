@@ -32,7 +32,7 @@
 #include <math.h>
 
 #if defined(_MSC_VER)
-#include "msinttypes/stdint.h"
+#include <stdint.h>
 #include <intrin.h>
 #else
 #include <stdint.h>
@@ -96,7 +96,7 @@ static inline DiyFp DiyFp_multiply (const DiyFp lhs, const DiyFp rhs) {
 	uint64_t l = _umul128(lhs.f, rhs.f, &h);
 	if (l & (uint64_t(1) << 63)) // rounding
 		h++;
-	return DiyFp_fro_parts(h, e + rhs.e + 64);
+	return DiyFp_from_parts(h, lhs.e + rhs.e + 64);
 #elif ((__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6) || __clang_major__ >= 9) && defined(__x86_64__))
 	unsigned __int128 p = (unsigned __int128 )(lhs.f) * (unsigned __int128 )(rhs.f);
 	uint64_t h = p >> 64;
@@ -418,24 +418,26 @@ static inline void Prettify(char* buffer, int length, int k) {
 	}
 }
 
-void emyg_dtoa (double value, char* buffer) {
-	// Not handling NaN and inf
-	assert(!isnan(value));
-	assert(!isinf(value));
+extern "C" {
+	void emyg_dtoa(double value, char* buffer) {
+		// Not handling NaN and inf
+		assert(!isnan(value));
+		assert(!isinf(value));
 
-	if (value == 0) {
-		buffer[0] = '0';
-		buffer[1] = '.';
-		buffer[2] = '0';
-		buffer[3] = '\0';
-	}
-	else {
-		if (value < 0) {
-			*buffer++ = '-';
-			value = -value;
+		if (value == 0) {
+			buffer[0] = '0';
+			buffer[1] = '.';
+			buffer[2] = '0';
+			buffer[3] = '\0';
 		}
-		int length, K;
-		Grisu2(value, buffer, &length, &K);
-		Prettify(buffer, length, K);
+		else {
+			if (value < 0) {
+				*buffer++ = '-';
+				value = -value;
+			}
+			int length, K;
+			Grisu2(value, buffer, &length, &K);
+			Prettify(buffer, length, K);
+		}
 	}
 }

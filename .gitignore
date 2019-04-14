@@ -4,3 +4,8 @@
 /intermediate
 result/result.csv
 result/result.html
+/build/premake5.exe
+/.vs/dtoa-benchmark/v16/ipch/AutoPCH
+/.vs/dtoa-benchmark/v16/.suo
+/.vs/dtoa-benchmark/v16/Browse.VC.db
+/.vs/dtoa-benchmark/v16/Browse.VC.opendb
