@@ -239,5 +239,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src\to_chars.cpp" />
     <ClCompile Include="..\..\src\fmttest.cpp" />
+    <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
   </ItemGroup>
 </Project>

@@ -180,6 +180,7 @@
     <ClCompile Include="..\..\src\jklgrisu.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\milotest.cpp" />
+    <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
     <ClCompile Include="..\..\src\null.cpp" />
     <ClCompile Include="..\..\src\ostringstream.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
