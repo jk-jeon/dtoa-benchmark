@@ -9,6 +9,11 @@
 #include <iterator>		// std::make_reverse_iterator; not needed if C++20 constexpr algorithms are used instead
 #include <limits>		// std::numeric_limits
 #include <utility>		// std::index_sequence & friends
+#include <type_traits>	// std::integral_constant
+
+#if defined(_MSC_VER)
+#include <intrin.h>
+#endif
 
 struct grisu_impl_common {
 	// The result of this function is valid for
@@ -485,38 +490,70 @@ public:
 		auto mk = log10_pow2(alpha - mp.exponent - 1);
 		assert(k_min <= mk && mk <= k_max);
 		{
-			// How can I speed up these operations using e.g. 128-bit intrinsics?
-			constexpr significand_type mask =
-				(significand_type(1) << fp_t::half_significand_bits) - significand_type(1);
+			if constexpr (sizeof(Float) == 8) {
+#if defined(_MSC_VER) && defined(_M_AMD64)
+				std::uint64_t high;
+				auto low = _umul128(mp.significand, powers_of_10[mk - k_min].significand, &high);
+				mp.significand = high + (low >> 63);
 
-			auto ap = mp.significand >> fp_t::half_significand_bits;
-			auto bp = mp.significand & mask;
-			auto am = mm_significand >> fp_t::half_significand_bits;
-			auto bm = mm_significand & mask;
-			auto c = powers_of_10[mk - k_min].significand >> fp_t::half_significand_bits;
-			auto d = powers_of_10[mk - k_min].significand & mask;
+				low = _umul128(mm_significand, powers_of_10[mk - k_min].significand, &high);
+				mm_significand = high + (low >> 63);
+#elif (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)) && defined(__x86_64__)
+				auto p = (unsigned __int128)(mp.significand) *
+					(unsigned __int128)(powers_of_10[mk - k_min].significand);
+				auto low = std::uint64_t(p);
+				mp.significand = std::uint64_t(p >> 64) + (low >> 63);
 
-			auto apc = ap * c;
-			auto bpc = bp * c;
-			auto amc = am * c;
-			auto bmc = bm * c;
+				p = (unsigned __int128)(mm_significand) *
+					(unsigned __int128)(powers_of_10[mk - k_min].significand);
+				low = std::uint64_t(p);
+				mm_significand = std::uint64_t(p >> 64) + (low >> 63);
+#else
+				constexpr significand_type mask =
+					(significand_type(1) << fp_t::half_significand_bits) - significand_type(1);
 
-			auto apd = ap * d;
-			auto bpd = bp * d;
-			auto amd = am * d;
-			auto bmd = bm * d;
+				auto ap = mp.significand >> fp_t::half_significand_bits;
+				auto bp = mp.significand & mask;
+				auto am = mm_significand >> fp_t::half_significand_bits;
+				auto bm = mm_significand & mask;
+				auto c = powers_of_10[mk - k_min].significand >> fp_t::half_significand_bits;
+				auto d = powers_of_10[mk - k_min].significand & mask;
 
-			auto intermediate_p = (bpd >> fp_t::half_significand_bits)
-				+ (apd & mask) + (bpc & mask)
-				+ (significand_type(1) << (fp_t::half_significand_bits - 1));
-			auto intermediate_m = (bmd >> fp_t::half_significand_bits)
-				+ (amd & mask) + (bmc & mask)
-				+ (significand_type(1) << (fp_t::half_significand_bits - 1));
+				auto apc = ap * c;
+				auto bpc = bp * c;
+				auto amc = am * c;
+				auto bmc = bm * c;
 
-			mp.significand = apc + (intermediate_p >> fp_t::half_significand_bits)
-				+ (apd >> fp_t::half_significand_bits) + (bpc >> fp_t::half_significand_bits);
-			mm_significand = amc + (intermediate_m >> fp_t::half_significand_bits)
-				+ (amd >> fp_t::half_significand_bits) + (bmc >> fp_t::half_significand_bits);
+				auto apd = ap * d;
+				auto bpd = bp * d;
+				auto amd = am * d;
+				auto bmd = bm * d;
+
+				auto intermediate_p = (bpd >> fp_t::half_significand_bits)
+					+ (apd & mask) + (bpc & mask)
+					+ (significand_type(1) << (fp_t::half_significand_bits - 1));
+				auto intermediate_m = (bmd >> fp_t::half_significand_bits)
+					+ (amd & mask) + (bmc & mask)
+					+ (significand_type(1) << (fp_t::half_significand_bits - 1));
+
+				mp.significand = apc + (intermediate_p >> fp_t::half_significand_bits)
+					+ (apd >> fp_t::half_significand_bits) + (bpc >> fp_t::half_significand_bits);
+				mm_significand = amc + (intermediate_m >> fp_t::half_significand_bits)
+					+ (amd >> fp_t::half_significand_bits) + (bmc >> fp_t::half_significand_bits);
+#endif
+			}
+			else {
+				static_assert(sizeof(Float) == 4);
+				auto p = (std::uint64_t)(mp.significand) *
+					(std::uint64_t)(powers_of_10[mk - k_min].significand);
+				auto low = std::uint32_t(p);
+				mp.significand = std::uint32_t(p >> 32) + (low >> 31);
+
+				p = (std::uint64_t)(mm_significand) *
+					(std::uint64_t)(powers_of_10[mk - k_min].significand);
+				low = std::uint32_t(p);
+				mm_significand = std::uint32_t(p >> 32) + (low >> 31);
+			}
 
 			mp.exponent += powers_of_10[mk - k_min].exponent + fp_t::significand_bits;
 			assert(mp.exponent >= alpha && mp.exponent <= gamma);
@@ -538,7 +575,7 @@ public:
 		//   - for binary64 (aka "double" type), \delta >= 1533 * 2^\alpha.
 		// Hence, for our choice of \alpha (alpha = 0), \delta is always strictly larger than 100.
 		// This implies that kappa is at least 2, and for binary64, kappa is at least 3.
-		// Since mp.exponent is at most gamma = 3, assuming kappa >= 3 will simplify
+		// Because of the fact that mp.exponent is at most gamma = 3, assuming kappa >= 3 simplifies
 		// a lot of remaining operations; therefore, we start our computation with kappa = 3.
 		// For binary32 case, this requires us to do some additional things for
 		// handling the case kappa == 2.
@@ -560,7 +597,7 @@ public:
 		mp.exponent = 3 - mk;
 
 		// We should check if kappa == 2 for binary32
-		if constexpr (sizeof(Float) == 4) {			
+		if constexpr (sizeof(Float) == 4) {
 			if (r > delta_significand) {
 				// Compute s satisfying 2^mp.exponent * mp.significand = 100 * s + t
 				mp.significand *= significand_type(10);
@@ -572,17 +609,32 @@ public:
 		}
 		assert(r <= delta_significand);
 
-		while (true) {
-			auto q = mp.significand / significand_type(10);
-			r += divisor * (mp.significand % significand_type(10));
+		// Perform binary search to find kappa
+		significand_type q, new_r;
+		auto update_q_r = [&](auto power_of_ten, auto exponent) {
+			q = mp.significand / decltype(power_of_ten)::value;
+			new_r = r + divisor * (mp.significand % decltype(power_of_ten)::value);
 
-			if (r > delta_significand)
-				break;
-
-			mp.significand = q;
-			divisor *= significand_type(10);
-			++mp.exponent;
+			if (new_r <= delta_significand) {
+				mp.significand = q;
+				mp.exponent += decltype(exponent)::value;
+				r = new_r;
+				divisor *= decltype(power_of_ten)::value;
+			}
+		};
+		if constexpr (sizeof(Float) == 8) {
+			update_q_r(std::integral_constant<significand_type, 1'00000000'00000000>{},
+				std::integral_constant<int, 16>{});
 		}
+		update_q_r(std::integral_constant<significand_type, 100000000>{},
+			std::integral_constant<int, 8>{});
+		update_q_r(std::integral_constant<significand_type, 10000>{},
+			std::integral_constant<int, 4>{});
+		update_q_r(std::integral_constant<significand_type, 100>{},
+			std::integral_constant<int, 2>{});
+		update_q_r(std::integral_constant<significand_type, 10>{},
+			std::integral_constant<int, 1>{});
+
 		return mp;
 	}
 
