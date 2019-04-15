@@ -608,32 +608,50 @@ public:
 			}
 		}
 		assert(r <= delta_significand);
+		delta_significand -= r;
 
 		// Perform binary search to find kappa
-		significand_type q, new_r;
-		auto update_q_r = [&](auto power_of_ten, auto exponent) {
+		// At this point, mp.significand <= std::numeric_limits<significand_type>::max() / 125, so
+		//   - for binary32 (aka "float" type), mp.significand is of at most 8 decimal digits,
+		//   - for binary64 (aka "double" type), mp.significand is of at most 18 decimal digits.
+		significand_type q;
+		auto perform_search = [&](auto power_of_ten, auto exponent) {
 			q = mp.significand / decltype(power_of_ten)::value;
-			new_r = r + divisor * (mp.significand % decltype(power_of_ten)::value);
+			r = divisor * (mp.significand % decltype(power_of_ten)::value);
 
-			if (new_r <= delta_significand) {
+			if (r <= delta_significand) {
 				mp.significand = q;
 				mp.exponent += decltype(exponent)::value;
-				r = new_r;
+				delta_significand -= r;
 				divisor *= decltype(power_of_ten)::value;
+
+				return false;
 			}
+			return true;
 		};
 		if constexpr (sizeof(Float) == 8) {
-			update_q_r(std::integral_constant<significand_type, 1'00000000'00000000>{},
-				std::integral_constant<int, 16>{});
+			if (perform_search(std::integral_constant<significand_type, 1'00000000'00000000>{},
+				std::integral_constant<int, 16>{}))
+			{
+				perform_search(std::integral_constant<significand_type, 100000000>{},
+					std::integral_constant<int, 8>{});
+				perform_search(std::integral_constant<significand_type, 10000>{},
+					std::integral_constant<int, 4>{});
+				perform_search(std::integral_constant<significand_type, 100>{},
+					std::integral_constant<int, 2>{});
+			}
+			perform_search(std::integral_constant<significand_type, 10>{},
+				std::integral_constant<int, 1>{});
 		}
-		update_q_r(std::integral_constant<significand_type, 100000000>{},
-			std::integral_constant<int, 8>{});
-		update_q_r(std::integral_constant<significand_type, 10000>{},
-			std::integral_constant<int, 4>{});
-		update_q_r(std::integral_constant<significand_type, 100>{},
-			std::integral_constant<int, 2>{});
-		update_q_r(std::integral_constant<significand_type, 10>{},
-			std::integral_constant<int, 1>{});
+		else {
+			static_assert(sizeof(Float) == 4);
+			perform_search(std::integral_constant<significand_type, 10000>{},
+				std::integral_constant<int, 4>{});
+			perform_search(std::integral_constant<significand_type, 100>{},
+				std::integral_constant<int, 2>{});
+			perform_search(std::integral_constant<significand_type, 10>{},
+				std::integral_constant<int, 1>{});
+		}
 
 		return mp;
 	}
