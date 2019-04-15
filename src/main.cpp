@@ -245,7 +245,7 @@ public:
 	}
 
 	static const int kMaxDigit = 17;
-	static const size_t kCount = 1000;
+	static const size_t kCount = 10000;
 
 private:
 	RandomDigitData() :
