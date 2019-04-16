@@ -459,8 +459,12 @@ public:
 			constexpr auto half_unit = unit >> 1;
 
 			mp.significand <<= exponent_size;
+			// If the significand part of x was zero, then mp.significand ^ sign_mask should be zero.
+			// In this case, the distance from the left boundary is shorter than usual.
+			auto edge_case_correction = half_unit >> int((mp.significand ^ sign_mask) == 0);
 			mp.significand |= (sign_mask | half_unit);
 			mm_significand = mp.significand - unit;
+			mm_significand |= edge_case_correction;
 			mp.exponent -= fp_t_normal_exponent;
 		}
 		// Subnormal or zero
