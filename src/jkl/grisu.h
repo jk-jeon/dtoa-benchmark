@@ -459,9 +459,9 @@ public:
 			constexpr auto half_unit = unit >> 1;
 
 			mp.significand <<= exponent_size;
-			// If the significand part of x was zero, then mp.significand ^ sign_mask should be zero.
+			// If the significand part of x was zero, then mp.significand & ~sign_mask should be zero.
 			// In this case, the distance from the left boundary is shorter than usual.
-			auto edge_case_correction = half_unit >> int((mp.significand ^ sign_mask) == 0);
+			auto edge_case_correction = half_unit >> int((mp.significand & (~sign_mask)) == 0);
 			mp.significand |= (sign_mask | half_unit);
 			mm_significand = mp.significand - unit;
 			mm_significand |= edge_case_correction;
@@ -502,7 +502,7 @@ public:
 
 				low = _umul128(mm_significand, powers_of_10[mk - k_min].significand, &high);
 				mm_significand = high + (low >> 63);
-#elif (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
+#elif (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6)) && defined(__x86_64__)
 				auto p = (unsigned __int128)(mp.significand) *
 					(unsigned __int128)(powers_of_10[mk - k_min].significand);
 				auto low = std::uint64_t(p);
