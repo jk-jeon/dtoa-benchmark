@@ -1,5 +1,5 @@
 ﻿#include "test.h"
-#include "jkl/grisu.h"
+#include "jkj/grisu.h"
 
 namespace {
 	alignas(std::uint32_t) static constexpr char const radix_100_table[] = {
@@ -42,7 +42,7 @@ namespace {
 	}
 }
 
-void dtoa_jkl(double v, char* buffer)
+void dtoa_jkj(double v, char* buffer)
 {
 	char intermediate_buffer[41];
 	char* const last_letter = intermediate_buffer + sizeof(intermediate_buffer) - 1;
@@ -99,4 +99,4 @@ void dtoa_jkl(double v, char* buffer)
 		*dst_ptr = '\0';
 }
 
-REGISTER_TEST(jkl);
+REGISTER_TEST(jkj);

@@ -401,7 +401,7 @@ private:
 	static constexpr significand_type sign_mask = significand_type(1) << (fp_t::significand_bits - 1);
 
 	static constexpr auto fp_t_normal_exponent = exponent_bias + int(fp_t::significand_bits) - 1;
-	static constexpr auto fp_t_subnormal_exponent = int(std::numeric_limits<Float>::min_exponent - significand_size - 1);
+	static constexpr auto fp_t_subnormal_exponent = std::numeric_limits<Float>::min_exponent - int(significand_size) - 1;
 
 	// NOTE: significand is NOT extracted
 	static signed_fp_t decompose_float_impl(Float x) {
@@ -460,8 +460,10 @@ public:
 
 			mp.significand <<= exponent_size;
 			// If the significand part of x was zero, then mp.significand & ~sign_mask should be zero.
-			// In this case, the distance from the left boundary is shorter than usual.
-			auto edge_case_correction = half_unit >> int((mp.significand & (~sign_mask)) == 0);
+			// If this is the case and also mp.exponent is not 1,
+			// then the distance from the left boundary is shorter than usual.
+			auto edge_case_correction = half_unit >>
+				int((mp.significand & (~sign_mask)) == 0 && mp.exponent != 1);
 			mp.significand |= (sign_mask | half_unit);
 			mm_significand = mp.significand - unit;
 			mm_significand |= edge_case_correction;

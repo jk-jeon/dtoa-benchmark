@@ -148,7 +148,7 @@
     <ClInclude Include="..\..\src\grisu\powers.h" />
     <ClInclude Include="..\..\src\grisu\powers_ten_round64.h" />
     <ClInclude Include="..\..\src\grisu\prettify.h" />
-    <ClInclude Include="..\..\src\jkl\grisu.h" />
+    <ClInclude Include="..\..\src\jkj\grisu.h" />
     <ClInclude Include="..\..\src\milo\dtoa_milo.h" />
     <ClInclude Include="..\..\src\msinttypes\inttypes.h" />
     <ClInclude Include="..\..\src\msinttypes\stdint.h" />
@@ -177,7 +177,7 @@
     <ClCompile Include="..\..\src\gaytest.cpp" />
     <ClCompile Include="..\..\src\grisu\grisu2b_59_56.c" />
     <ClCompile Include="..\..\src\grisu2btest.cpp" />
-    <ClCompile Include="..\..\src\jklgrisu.cpp" />
+    <ClCompile Include="..\..\src\jkjgrisu.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\milotest.cpp" />
     <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />

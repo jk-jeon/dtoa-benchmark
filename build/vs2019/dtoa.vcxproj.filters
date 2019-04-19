@@ -19,9 +19,6 @@
     <Filter Include="grisu">
       <UniqueIdentifier>{2F2D870F-9B41-AFC0-64C3-5220D096ABF1}</UniqueIdentifier>
     </Filter>
-    <Filter Include="jkl">
-      <UniqueIdentifier>{0684880B-728D-887C-FB08-9F7C6711947C}</UniqueIdentifier>
-    </Filter>
     <Filter Include="milo">
       <UniqueIdentifier>{D6A19A7C-C2D8-9B0D-6BC5-811057DB170F}</UniqueIdentifier>
     </Filter>
@@ -30,6 +27,9 @@
     </Filter>
     <Filter Include="fmt">
       <UniqueIdentifier>{ec3c20e3-9845-4188-ba25-24cc451f1938}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="jkj">
+      <UniqueIdentifier>{0684880B-728D-887C-FB08-9F7C6711947C}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -159,9 +159,6 @@
     <ClInclude Include="..\..\src\grisu\prettify.h">
       <Filter>grisu</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\jkl\grisu.h">
-      <Filter>jkl</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\milo\dtoa_milo.h">
       <Filter>milo</Filter>
     </ClInclude>
@@ -182,6 +179,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\fmt\format.h">
       <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\jkj\grisu.h">
+      <Filter>jkj</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -227,7 +227,6 @@
       <Filter>grisu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\grisu2btest.cpp" />
-    <ClCompile Include="..\..\src\jklgrisu.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\milotest.cpp" />
     <ClCompile Include="..\..\src\null.cpp" />
@@ -240,5 +239,6 @@
     <ClCompile Include="..\..\src\to_chars.cpp" />
     <ClCompile Include="..\..\src\fmttest.cpp" />
     <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
+    <ClCompile Include="..\..\src\jkjgrisu.cpp" />
   </ItemGroup>
 </Project>

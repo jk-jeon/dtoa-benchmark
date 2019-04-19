@@ -1,5 +1,3 @@
-#if __cplusplus >= 201402L
-
 #include "test.h"
 #include "floaxie/ftoa.h"
 
@@ -9,5 +7,3 @@ void dtoa_floaxie(double v, char* buffer)
 }
 
 REGISTER_TEST(floaxie);
-
-#endif
