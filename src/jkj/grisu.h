@@ -1,8 +1,7 @@
-#pragma once
-
 //#include <algorithm>	// C++20 constexpr algorithms are not yet supported
 #include <array>
 //#include <bit>		// We don't have C++20 <bit> yet
+#include <cmath>        // std::isfinite
 #include <cassert>
 #include <cstddef>		// std::uint32_t, etc.
 #include <cstring>		// std::memcpy; not needed if C++20 std::bit_cast is used instead
@@ -36,7 +35,7 @@ struct grisu_impl_common {
 		//return std::log2p1(x);
 
 		std::size_t ret = 0;
-		auto inspect = [&](unsigned int shft) {
+		auto inspect = [&x, &ret](int shft) {
 			if ((x >> shft) != 0) {
 				x >>= shft;
 				ret += shft;
@@ -104,43 +103,24 @@ struct grisu_impl_common {
 		static constexpr std::size_t array_size =
 			(max_bits + element_number_of_bits - 1) / element_number_of_bits;
 
-		std::array<element_type, array_size> elements_;
+		//std::array<element_type, array_size> elements_;
+		element_type elements_[array_size];
 
 		struct leading_one_pos_t {
 			std::size_t		element_pos;
 			std::size_t		bit_pos;		// 1 ~ element_number_of_bits
 		} leading_one_pos_;
 
-		/* Boilerplates for constexpr initialization */
-		template <std::size_t I>
-		static constexpr element_type zero_initialize_element() {
-			return 0;
-		}
-		template <std::size_t... I>
-		static constexpr std::array<element_type, array_size>
-			zero_initialize_array(std::index_sequence<I...>)
-		{
-			return{ zero_initialize_element<I>()... };
-		}
-
-		template <std::size_t... I>
-		constexpr bignum_holder(std::index_sequence<I...>, element_type x) :
-			elements_{ zero_initialize_element<I>()... },
-			leading_one_pos_{ 0, log2p1(x) }
-		{
-			assert(x != 0);
-			elements_[0] = x;
-		}
-
 	public:
 		bignum_holder() = default;
 
 		constexpr bignum_holder(element_type x) :
-			bignum_holder(std::make_index_sequence<array_size>{}, x) {}
-
-		constexpr element_type operator[](std::size_t idx) const {
-			assert(idx < array_size);
-			return elements_[idx];
+			// Value-initialization
+			elements_{},
+			leading_one_pos_{ 0, log2p1(x) }
+		{
+			assert(x != 0);
+			elements_[0] = x;
 		}
 
 		// Repeat multiplying 2 until the number becomes bigger than or equal to the given number
@@ -158,11 +138,11 @@ struct grisu_impl_common {
 
 				// C++20 constexpr algorithms are not supported yet
 				//std::move_backward(elements_.begin(),
-				//	elements_.begin() + leading_one_pos_.element_pos + 1,
-				//	elements_.begin() + n.leading_one_pos_.element_pos + 1);
-				auto d_itr = elements_.begin() + n.leading_one_pos_.element_pos;
-				for (auto itr = std::make_reverse_iterator(elements_.begin() + leading_one_pos_.element_pos + 1);
-					itr != std::make_reverse_iterator(elements_.begin());
+				//	std::begin(elements_) + leading_one_pos_.element_pos + 1,
+				//	std::begin(elements_) + n.leading_one_pos_.element_pos + 1);
+				auto d_itr = std::begin(elements_) + n.leading_one_pos_.element_pos;
+				for (auto itr = std::make_reverse_iterator(std::begin(elements_) + leading_one_pos_.element_pos + 1);
+					itr != std::make_reverse_iterator(std::begin(elements_));
 					++itr)
 				{
 					*d_itr = *itr;
@@ -209,9 +189,9 @@ struct grisu_impl_common {
 			// Compare the shifted number with the given number
 			bool is_bigger_than_or_equal_to = true;
 			for (auto idx = std::ptrdiff_t(leading_one_pos_.element_pos); idx >= 0; --idx) {
-				if (elements_[idx] > n[idx])
+				if (elements_[idx] > n.elements_[idx])
 					break;
-				else if (elements_[idx] < n[idx]) {
+				else if (elements_[idx] < n.elements_[idx]) {
 					is_bigger_than_or_equal_to = false;
 					break;
 				}
@@ -244,7 +224,7 @@ struct grisu_impl_common {
 
 		// Multiply 5 to the current number
 		constexpr void multiply_5() & {
-			auto times_4 = zero_initialize_array(std::make_index_sequence<array_size>{});
+			decltype(elements_) times_4{};
 			leading_one_pos_t times_4_leading_one_pos{
 				leading_one_pos_.element_pos,
 				leading_one_pos_.bit_pos + 2
@@ -309,13 +289,13 @@ struct grisu_impl_common {
 		// Subtract another number
 		// Precondition: n should be strictly smaller than or equal to the current number
 		constexpr bignum_holder& operator-=(bignum_holder const& n) & {
-			unsigned int carry = elements_[0] < n[0] ? 1 : 0;
-			elements_[0] -= n[0];
+			unsigned int carry = elements_[0] < n.elements_[0] ? 1 : 0;
+			elements_[0] -= n.elements_[0];
 
 			std::size_t idx = 1;
 			for (; idx <= n.leading_one_pos_.element_pos; ++idx) {
-				auto n_with_carry = n[idx] + carry;
-				unsigned int first_carry = (n_with_carry < n[idx]) ? 1 : 0;
+				auto n_with_carry = n.elements_[idx] + carry;
+				unsigned int first_carry = (n_with_carry < n.elements_[idx]) ? 1 : 0;
 
 				carry = first_carry | ((elements_[idx] < n_with_carry) ? 1 : 0);
 				elements_[idx] -= n_with_carry;
@@ -574,17 +554,30 @@ public:
 		/* Find kappa and P */
 
 		// In Grisu2 algorithm, it can be shown that
-		// \delta >= 3 * 2^(e_{w^+} + e_c + q) * (2^{q-p-3} - 1)
-		//        >= 3 * 2^\alpha * (2^{q-p-3} - 1).
+		// \delta >= 3 * 2^(e_{w^+} + e_c + q) * (2^{q-p-4} - 1)
+		//        >= 3 * 2^\alpha * (2^{q-p-4} - 1).
+		// (The proof of Lemma 6.3 claims q-p-3 instead of q-p-4 is achievable, but this is wrong.)
 		// Thus,
-		//   - for binary32 (aka "float" type), \delta >= 189 * 2^\alpha, and
-		//   - for binary64 (aka "double" type), \delta >= 1533 * 2^\alpha.
-		// Hence, for our choice of \alpha (alpha = 0), \delta is always strictly larger than 100.
-		// This implies that kappa is at least 2, and for binary64, kappa is at least 3.
+		//   - for binary32 (aka "float" type), q-p-4 = 5 so \delta >= 93 * 2^\alpha, and
+		//   - for binary64 (aka "double" type), q-p-4 = 8 so \delta >= 765 * 2^\alpha.
+		// Hence, for our choice of \alpha (alpha = 0), \delta is always strictly larger than 10.
+		// For binary64, \delta is always strictly larger than 100, so kappa is at least 2.
+		// For binary32, it is not immediate that kappa is at least 2 because according to
+		// the above \delta can be less than 100. However, in fact we can derive a larger
+		// lower bound for \delta when w is not a normal boundary point
+		// (that is, it is normal, its significand is minimal, and its exponent is not minimal;
+		// in this case, we need edge correction as done in the above); in this case, we have
+		// \delta >= 2^\alpha * (2^{q-p-2} - 3),
+		// so \delta >= 125. Therefore, kappa can be possibly 1 only when the given number
+		// w is a normal boundary point. Also, we have \delta >= 186 if \alpha is not zero,
+		// so assume further that \alpha is zero. After computing all values of
+		// M_\downarrow^+ and \delta for those w's, we can verify that indeed the
+		// last two digits of M_\downarrow^+ is always smaller than or equal to \delta.
+		// Therefore, kappa is always at least 2.
 		// Because of the fact that mp.exponent is at most gamma = 3, assuming kappa >= 3 simplifies
 		// a lot of remaining operations; therefore, we start our computation with kappa = 3.
-		// For binary32 case, this requires us to do some additional things for
-		// handling the case kappa == 2.
+		// Then if the last three digits of M_\downarrow^+ is strictly greater than \delta,
+		// we immediately conclude that kapa is 2.
 
 		// divisor = 5^mp.exponent * 10^(kappa - mp.exponent)
 		auto divisor = significand_type(1000) >> mp.exponent;
@@ -602,18 +595,15 @@ public:
 
 		mp.exponent = 3 - mk;
 
-		// We should check if kappa == 2 for binary32
-		if constexpr (sizeof(Float) == 4) {
-			if (r > delta_significand) {
-				// Compute s satisfying 2^mp.exponent * mp.significand = 100 * s + t
-				mp.significand *= significand_type(10);
-				mp.significand += r / significand_type(100);
-				--mp.exponent;
+		// We should check if kappa == 2
+		if (r > delta_significand) {
+			// Compute s satisfying 2^mp.exponent * mp.significand = 100 * s + t
+			mp.significand *= significand_type(10);
+			mp.significand += r / significand_type(100);
+			--mp.exponent;
 
-				return mp;
-			}
+			return mp;
 		}
-		assert(r <= delta_significand);
 		delta_significand -= r;
 
 		// Perform binary search to find kappa
@@ -670,26 +660,13 @@ private:
 	static_assert(k_min < 0 && k_max > 0 && k_max >= -k_min);
 
 	static constexpr std::size_t cache_size = k_max - k_min + 1;
-
 	static constexpr std::size_t cache_max_bits = alpha - fp_t::min_exponent;
-
-	// Merely to make compute_powers_of_10() constexpr
-	template <std::size_t I>
-	static constexpr fp_t zero_initialize_fp_t() noexcept {
-		return{ 0, 0 };
-	}
-	template <std::size_t... I>
-	static constexpr std::array<fp_t, cache_size> zero_initialize_cache(
-		std::index_sequence<I...>) noexcept
-	{
-		return{ zero_initialize_fp_t<I>()... };
-	}
 
 public:
 	static constexpr std::array<fp_t, cache_size> compute_powers_of_10()
 	{
-		std::array<fp_t, cache_size> ret = zero_initialize_cache(
-			std::make_index_sequence<cache_size>{});
+		// Value-initialize
+		std::array<fp_t, cache_size> ret{};
 
 		auto cache = [&ret](int k) -> fp_t & {
 			return ret[k - k_min];
@@ -1487,6 +1464,8 @@ private:
 		}
 	}
 
+	// Make this public for ease of testing
+public:
 	static constexpr auto powers_of_10 =
 		// In theory, it is possible to evaluate this in compile-time,
 		// but it will take too much compilation time to do that.
