@@ -31,6 +31,12 @@
     <Filter Include="jkj">
       <UniqueIdentifier>{0684880B-728D-887C-FB08-9F7C6711947C}</UniqueIdentifier>
     </Filter>
+    <Filter Include="grisu_exact">
+      <UniqueIdentifier>{4d476bac-4362-411c-9640-0b79e28851f1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="ryu">
+      <UniqueIdentifier>{ccc1fce5-9d54-4b48-a142-8523f8f06e0f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\double-conversion\bignum-dtoa.h">
@@ -183,6 +189,36 @@
     <ClInclude Include="..\..\src\jkj\grisu.h">
       <Filter>jkj</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\grisu_exact\grisu_exact.h">
+      <Filter>grisu_exact</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\common.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2fixed_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s_intrinsics.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\digit_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\ryu.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\ryu_generic_128.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\ryu2.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc">
@@ -236,9 +272,20 @@
     <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc">
       <Filter>emyg</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\to_chars.cpp" />
     <ClCompile Include="..\..\src\fmttest.cpp" />
     <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
     <ClCompile Include="..\..\src\jkjgrisu.cpp" />
+    <ClCompile Include="..\..\src\grisu_exact.cpp" />
+    <ClCompile Include="..\..\src\ryu\d2fixed.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryu\d2s.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryu\f2s.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryutest.cpp" />
+    <ClCompile Include="..\..\src\to_chars.cpp" />
   </ItemGroup>
 </Project>

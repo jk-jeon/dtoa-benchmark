@@ -11,27 +11,50 @@
 #endif
 #include <cstdlib>
 #include <math.h>
+#include <random>
 #include "resultfilename.h"
 #include "timer.h"
 #include "test.h"
 #include "double-conversion/double-conversion.h"
 
-const unsigned kVerifyRandomCount = 100000;
 const unsigned kIterationForRandom = 100;
 const unsigned kIterationPerDigit = 10;
 const unsigned kTrial = 10;
 
-class Random {
+class RandomData {
 public:
-	Random(unsigned seed = 0) : mSeed(seed) {}
-
-	unsigned operator()() {
-		mSeed = 214013 * mSeed + 2531011;
-		return mSeed;
+	static double* GetData() {
+		static RandomData singleton;
+		return singleton.mData;
 	}
 
+	static const size_t kCount = 100000;
+
 private:
-	unsigned mSeed;
+	RandomData() :
+		mData(new double[kCount])
+	{
+		std::mt19937 rg{ std::random_device{}() };
+		union {
+			double d;
+			uint64_t u;
+		}u;
+
+		for (size_t i = 0; i < kCount; i++) {
+			do {
+				// Need to call r() in two statements for cross-platform coherent sequence.
+				u.u = uint64_t(rg()) << 32;
+				u.u |= uint64_t(rg());
+			} while (isnan(u.d) || isinf(u.d));
+			mData[i] = u.d;
+		}
+	}
+
+	~RandomData() {
+		delete[] mData;
+	}
+
+	double* mData;
 };
 
 static size_t VerifyValue(double value, void(*f)(double, char*), const char* expect = 0) {
@@ -94,26 +117,20 @@ static void Verify(void(*f)(double, char*), const char* fname) {
 	VerifyValue(std::numeric_limits<double>::max(), f);
 	VerifyValue(std::numeric_limits<double>::denorm_min(), f);
 	
-	union {
-		double d;
-		uint64_t u;
-	}u;
-	Random r;
-
+	char buffer[256];
+	double* data = RandomData::GetData();
+	size_t n = RandomData::kCount;
+	
 	uint64_t lenSum = 0;
 	size_t lenMax = 0;
-	for (unsigned i = 0; i < kVerifyRandomCount; i++) {
-		do {
-			// Need to call r() in two statements for cross-platform coherent sequence.
-			u.u = uint64_t(r()) << 32;
-			u.u |= uint64_t(r());
-		} while (isnan(u.d) || isinf(u.d));
-		size_t len = VerifyValue(u.d, f);
+	for (unsigned i = 0; i < n; i++) {
+		
+		size_t len = VerifyValue(data[i], f);
 		lenSum += len;
 		lenMax = std::max(lenMax, len);
 	}
 
-	double lenAvg = double(lenSum) / kVerifyRandomCount;
+	double lenAvg = double(lenSum) / n;
 	printf("OK. Length Avg = %2.3f, Max = %d\n", lenAvg, (int)lenMax);
 }
 
@@ -145,8 +162,8 @@ void BenchSequential(void(*f)(double, char*), const char* fname, FILE* fp) {
 		double duration = std::numeric_limits<double>::max();
 		for (unsigned trial = 0; trial < kTrial; trial++) {
 			int64_t v = start;
-			Random r;
-			v += ((int64_t(r()) << 32) | int64_t(r())) % start;
+			std::mt19937 rg{ std::random_device{}() };
+			v += ((int64_t(rg()) << 32) | int64_t(rg())) % start;
 			double sign = 1;
 			Timer timer;
 			timer.Start();
@@ -172,42 +189,6 @@ void BenchSequential(void(*f)(double, char*), const char* fname, FILE* fp) {
 
 	printf("[%8.3fns, %8.3fns]\n", minDuration, maxDuration);
 }
-
-class RandomData {
-public:
-	static double* GetData() {
-		static RandomData singleton;
-		return singleton.mData;
-	}
-
-	static const size_t kCount = 1000;
-
-private:
-	RandomData() :
-		mData(new double[kCount])
-	{
-		Random r;
-		union {
-			double d;
-			uint64_t u;
-		}u;
-
-		for (size_t i = 0; i < kCount; i++) {
-			do {
-				// Need to call r() in two statements for cross-platform coherent sequence.
-				u.u = uint64_t(r()) << 32;
-				u.u |= uint64_t(r());
-			} while (isnan(u.d) || isinf(u.d));
-			mData[i] = u.d;
-		}
-	}
-
-	~RandomData() {
-		delete[] mData;
-	}
-
-	double* mData;
-};
 
 void BenchRandom(void(*f)(double, char*), const char* fname, FILE* fp) {
 	printf("Benchmarking      random %-20s ... ", fname);
@@ -251,7 +232,7 @@ private:
 	RandomDigitData() :
 		mData(new double[kMaxDigit * kCount])
 	{
-		Random r;
+		std::mt19937 rg{ std::random_device{}() };
 		union {
 			double d;
 			uint64_t u;
@@ -262,8 +243,8 @@ private:
 			for (size_t i = 0; i < kCount; i++) {
 				do {
 					// Need to call r() in two statements for cross-platform coherent sequence.
-					u.u = uint64_t(r()) << 32;
-					u.u |= uint64_t(r());
+					u.u = uint64_t(rg()) << 32;
+					u.u |= uint64_t(rg());
 				} while (isnan(u.d) || isinf(u.d));
 
 				// Convert to string with limited digits, and convert it back.

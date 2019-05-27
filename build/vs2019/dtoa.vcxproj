@@ -91,7 +91,6 @@
       <StringPooling>true</StringPooling>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
-      <WholeProgramOptimization>false</WholeProgramOptimization>
       <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpplatest</LanguageStandard>
@@ -100,6 +99,7 @@
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -148,11 +148,21 @@
     <ClInclude Include="..\..\src\grisu\powers.h" />
     <ClInclude Include="..\..\src\grisu\powers_ten_round64.h" />
     <ClInclude Include="..\..\src\grisu\prettify.h" />
+    <ClInclude Include="..\..\src\grisu_exact\grisu_exact.h" />
     <ClInclude Include="..\..\src\jkj\grisu.h" />
     <ClInclude Include="..\..\src\milo\dtoa_milo.h" />
     <ClInclude Include="..\..\src\msinttypes\inttypes.h" />
     <ClInclude Include="..\..\src\msinttypes\stdint.h" />
     <ClInclude Include="..\..\src\resultfilename.h" />
+    <ClInclude Include="..\..\src\ryu\common.h" />
+    <ClInclude Include="..\..\src\ryu\d2fixed_full_table.h" />
+    <ClInclude Include="..\..\src\ryu\d2s.h" />
+    <ClInclude Include="..\..\src\ryu\d2s_full_table.h" />
+    <ClInclude Include="..\..\src\ryu\d2s_intrinsics.h" />
+    <ClInclude Include="..\..\src\ryu\digit_table.h" />
+    <ClInclude Include="..\..\src\ryu\ryu.h" />
+    <ClInclude Include="..\..\src\ryu\ryu2.h" />
+    <ClInclude Include="..\..\src\ryu\ryu_generic_128.h" />
     <ClInclude Include="..\..\src\test.h" />
     <ClInclude Include="..\..\src\timer.h" />
   </ItemGroup>
@@ -165,33 +175,64 @@
     <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc" />
     <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc" />
     <ClCompile Include="..\..\src\double-conversion\strtod.cc" />
-    <ClCompile Include="..\..\src\doubleconvtest.cpp" />
+    <ClCompile Include="..\..\src\doubleconvtest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc" />
-    <ClCompile Include="..\..\src\emygtest.cpp" />
-    <ClCompile Include="..\..\src\floaxietest.cpp" />
-    <ClCompile Include="..\..\src\fmttest.cpp" />
+    <ClCompile Include="..\..\src\emygtest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\floaxietest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\fmttest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\fpconv\fpconv.c" />
-    <ClCompile Include="..\..\src\fpconvtest.cpp" />
+    <ClCompile Include="..\..\src\fpconvtest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\gay\dtoa.c" />
     <ClCompile Include="..\..\src\gay\g_fmt.c" />
-    <ClCompile Include="..\..\src\gaytest.cpp" />
+    <ClCompile Include="..\..\src\gaytest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\grisu\grisu2b_59_56.c" />
-    <ClCompile Include="..\..\src\grisu2btest.cpp" />
-    <ClCompile Include="..\..\src\jkjgrisu.cpp" />
+    <ClCompile Include="..\..\src\grisu2btest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\grisu_exact.cpp" />
+    <ClCompile Include="..\..\src\jkjgrisu.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\main.cpp" />
-    <ClCompile Include="..\..\src\milotest.cpp" />
-    <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
-    <ClCompile Include="..\..\src\null.cpp" />
+    <ClCompile Include="..\..\src\milotest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\milo_only_Grisu2.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\null.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\ostringstream.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\ostrstream.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\src\ryutest.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryu\d2fixed.c" />
+    <ClCompile Include="..\..\src\ryu\d2s.c" />
+    <ClCompile Include="..\..\src\ryu\f2s.c" />
     <ClCompile Include="..\..\src\sprintf.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\to_chars.cpp" />
+    <ClCompile Include="..\..\src\to_chars.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

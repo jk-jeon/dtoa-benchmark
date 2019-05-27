@@ -1,10 +1,10 @@
 ﻿#include "test.h"
-#include "jkj/grisu.h"
+#include "grisu_exact/grisu_exact.h"
 
 // The printing routine here is brought from Ryu
 
 namespace {
-	alignas(std::uint32_t) static constexpr char radix_100_table[] = {
+	alignas(std::uint32_t) constexpr char radix_100_table[] = {
 		'0', '0', '0', '1', '0', '2', '0', '3', '0', '4',
 		'0', '5', '0', '6', '0', '7', '0', '8', '0', '9',
 		'1', '0', '1', '1', '1', '2', '1', '3', '1', '4',
@@ -27,7 +27,7 @@ namespace {
 		'9', '5', '9', '6', '9', '7', '9', '8', '9', '9'
 	};
 
-	uint32_t decimalLength17(const uint64_t v) {
+	constexpr std::uint32_t decimal_length(std::uint64_t const v) {
 		// This is slightly faster than a loop.
 		// The average output length is 16.38 digits, so we check high-to-low.
 		// Function precondition: v is not an 18, 19, or 20-digit number.
@@ -51,30 +51,28 @@ namespace {
 		if (v >= 10L) { return 2; }
 		return 1;
 	}
-}
+};
 
-void dtoa_jkj(double x, char* result)
+void dtoa_grisu_exact(double x, char* buffer)
 {
-	//print_float(x, result);
-
-	auto v = grisu_impl<double>::grisu2(x);
-
 	// Step 5: Print the decimal representation.
 	int index = 0;
-	if (v.is_negative) {
-		result[index++] = '-';
-	}
+	auto v = jkj::grisu_exact(x, jkj::grisu_exact_case_handlers::assert_finite{},
+		jkj::grisu_exact_rounding_modes::to_even{});
 
-	uint64_t output = v.significand;
-	const uint32_t olength = decimalLength17(output);
+	if (v.is_negative) {
+		buffer[index++] = '-';
+	}
+	auto output = v.significand;
+	auto const olength = decimal_length(output);
 
 	// Print the decimal digits.
-	// The following code is equivalent to:
-	// for (uint32_t i = 0; i < olength - 1; ++i) {
-	//   const uint32_t c = output % 10; output /= 10;
-	//   result[index + olength - i] = (char) ('0' + c);
-	// }
-	// result[index] = '0' + output % 10;
+		// The following code is equivalent to:
+		// for (uint32_t i = 0; i < olength - 1; ++i) {
+		//   const uint32_t c = output % 10; output /= 10;
+		//   result[index + olength - i] = (char) ('0' + c);
+		// }
+		// result[index] = '0' + output % 10;
 
 	uint32_t i = 0;
 	// We prefer 32-bit operations, even on 64-bit platforms.
@@ -94,10 +92,10 @@ void dtoa_jkj(double x, char* result)
 		const uint32_t c1 = (c / 100) << 1;
 		const uint32_t d0 = (d % 100) << 1;
 		const uint32_t d1 = (d / 100) << 1;
-		memcpy(result + index + olength - i - 1, radix_100_table + c0, 2);
-		memcpy(result + index + olength - i - 3, radix_100_table + c1, 2);
-		memcpy(result + index + olength - i - 5, radix_100_table + d0, 2);
-		memcpy(result + index + olength - i - 7, radix_100_table + d1, 2);
+		memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
+		memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
+		memcpy(buffer + index + olength - i - 5, radix_100_table + d0, 2);
+		memcpy(buffer + index + olength - i - 7, radix_100_table + d1, 2);
 		i += 8;
 	}
 	uint32_t output2 = (uint32_t)output;
@@ -110,29 +108,29 @@ void dtoa_jkj(double x, char* result)
 		output2 /= 10000;
 		const uint32_t c0 = (c % 100) << 1;
 		const uint32_t c1 = (c / 100) << 1;
-		memcpy(result + index + olength - i - 1, radix_100_table + c0, 2);
-		memcpy(result + index + olength - i - 3, radix_100_table + c1, 2);
+		memcpy(buffer + index + olength - i - 1, radix_100_table + c0, 2);
+		memcpy(buffer + index + olength - i - 3, radix_100_table + c1, 2);
 		i += 4;
 	}
 	if (output2 >= 100) {
 		const uint32_t c = (output2 % 100) << 1;
 		output2 /= 100;
-		memcpy(result + index + olength - i - 1, radix_100_table + c, 2);
+		memcpy(buffer + index + olength - i - 1, radix_100_table + c, 2);
 		i += 2;
 	}
 	if (output2 >= 10) {
 		const uint32_t c = output2 << 1;
 		// We can't use memcpy here: the decimal dot goes between these two digits.
-		result[index + olength - i] = radix_100_table[c + 1];
-		result[index] = radix_100_table[c];
+		buffer[index + olength - i] = radix_100_table[c + 1];
+		buffer[index] = radix_100_table[c];
 	}
 	else {
-		result[index] = (char)('0' + output2);
+		buffer[index] = (char)('0' + output2);
 	}
 
 	// Print decimal point if needed.
 	if (olength > 1) {
-		result[index + 1] = '.';
+		buffer[index + 1] = '.';
 		index += olength + 1;
 	}
 	else {
@@ -140,29 +138,28 @@ void dtoa_jkj(double x, char* result)
 	}
 
 	// Print the exponent.
-	result[index++] = 'e';
+	buffer[index++] = 'E';
 	int32_t exp = v.exponent + (int32_t)olength - 1;
 	if (exp < 0) {
-		result[index++] = '-';
+		buffer[index++] = '-';
 		exp = -exp;
 	}
 
 	if (exp >= 100) {
 		const int32_t c = exp % 10;
-		memcpy(result + index, radix_100_table + 2 * (exp / 10), 2);
-		result[index + 2] = (char)('0' + c);
+		memcpy(buffer + index, radix_100_table + 2 * (exp / 10), 2);
+		buffer[index + 2] = (char)('0' + c);
 		index += 3;
 	}
 	else if (exp >= 10) {
-		memcpy(result + index, radix_100_table + 2 * exp, 2);
+		memcpy(buffer + index, radix_100_table + 2 * exp, 2);
 		index += 2;
 	}
 	else {
-		result[index++] = (char)('0' + exp);
+		buffer[index++] = (char)('0' + exp);
 	}
 
-	//return index;
-	result[index] = '\0';
+	buffer[index] = '\0';
 }
 
-REGISTER_TEST(jkj);
+REGISTER_TEST(grisu_exact);

@@ -2,15 +2,15 @@
   "ExpandedNodes": [
     "",
     "\\build",
+    "\\build\\vs2019",
     "\\src",
     "\\src\\double-conversion",
     "\\src\\emyg",
     "\\src\\floaxie",
     "\\src\\gay",
     "\\src\\grisu",
-    "\\src\\jkl",
     "\\stb_sprintf"
   ],
-  "SelectedNode": "\\src\\jkl\\grisu.h",
+  "SelectedNode": "\\build\\vs2019\\benchmark.sln",
   "PreviewInSolutionExplorer": false
 }

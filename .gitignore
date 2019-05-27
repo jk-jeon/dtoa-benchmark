@@ -10,3 +10,4 @@ result/result.html
 /build/vs2019/.vs/benchmark/v16/ipch/AutoPCH
 /build/vs2019/.vs/benchmark/v16
 /build/gmake
+/build/vs2019/VTune Amplifier Results/dtoa
