@@ -58,7 +58,7 @@ void dtoa_grisu_exact(double x, char* buffer)
 	// Step 5: Print the decimal representation.
 	int index = 0;
 	auto v = jkj::grisu_exact(x, jkj::grisu_exact_case_handlers::assert_finite{},
-		jkj::grisu_exact_rounding_modes::to_even{});
+		jkj::grisu_exact_rounding_modes::nearest_to_even{});
 
 	if (v.is_negative) {
 		buffer[index++] = '-';
