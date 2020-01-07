@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alexey Chernov <4ernov@gmail.com>
+ * Copyright 2015-2019 Alexey Chernov <4ernov@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,13 +33,13 @@
 #include <cstddef>
 #include <cassert>
 
-#include "diy_fp.h"
-#include "cached_power.h"
-#include "k_comp.h"
-#include "static_pow.h"
-#include "integer_of_size.h"
-#include "bit_ops.h"
-#include "memwrap.h"
+#include "floaxie/diy_fp.h"
+#include "floaxie/cached_power.h"
+#include "floaxie/k_comp.h"
+#include "floaxie/static_pow.h"
+#include "floaxie/integer_of_size.h"
+#include "floaxie/bit_ops.h"
+#include "floaxie/memwrap.h"
 
 namespace floaxie
 {
@@ -67,7 +67,7 @@ namespace floaxie
 	/** \brief Calculate the biggest power of 10 divisor for the specified
 	 * value.
 	 */
-	inline kappa_pair_type calculate_kappa_div(half_of_mantissa_storage_type n) noexcept
+	constexpr kappa_pair_type calculate_kappa_div(half_of_mantissa_storage_type n) noexcept
 	{
 		if (n < static_pow<10, 1>()) return make_kappa_div<1>();
 		if (n < static_pow<10, 2>()) return make_kappa_div<2>();
@@ -111,6 +111,10 @@ namespace floaxie
 		 * \tparam FloatType floating point type of `diy_fp` (`float` for single precision,
 		 * `double` for double precision) of \p **Mm** and \p **Mp**.
 		 * \tparam CharType character type (typically `char` or `wchar_t`) of \p **buffer**.
+		 *
+		 * \param buffer - buffer where digits are generated to.
+		 * \param len - output parameter to pass the length of the digit sequence written.
+		 * \param K - input/output parameter to reflect K modifications made.
 		 *
 		 * \see [Printing Floating-Point Numbers Quickly and Accurately with
 		 * Integers]
@@ -201,18 +205,18 @@ namespace floaxie
 	 * greater of equal, than the bit size of `diy_fp::mantissa_storage_type`
 	 * to use the most optimal `digit_gen()` implementation.
 	 *
-	 * \tparam alpha α value of **Grisu** algorithm
-	 * \tparam gamma γ value of **Grisu** algorithm
+	 * \tparam alpha α value of **Grisu** algorithm.
+	 * \tparam gamma γ value of **Grisu** algorithm.
 	 * \tparam CharType character type (typically `char` or `wchar_t`) of the
-	 * output buffer \p **buffer**
+	 * output buffer \p **buffer**.
 	 *
-	 * \param Mp **M+** value (right boundary)
-	 * \param Mm **M-** value (left boundary)
+	 * \param Mp **M+** value (right boundary).
+	 * \param Mm **M-** value (left boundary).
 	 * \param buffer character buffer to print the representation to
 	 * \param len output parameter to return the length of the representation
-	 * printed
+	 * printed.
 	 * \param K output parameter to return **K** (decimal exponent) of the
-	 * value
+	 * value.
 	 *
 	 * \see `max_digits()`
 	 * \see `max_buffer_size()`
@@ -235,19 +239,19 @@ namespace floaxie
 
 	/** \brief **Grisu2** algorithm implementation.
 	 *
-	 * \tparam alpha α value of **Grisu** algorithm
-	 * \tparam gamma γ value of **Grisu** algorithm
+	 * \tparam alpha α value of **Grisu** algorithm.
+	 * \tparam gamma γ value of **Grisu** algorithm.
 	 * \tparam FloatType type of input floating-point value (calculated by type
-	 * of \p **v** parameter)
+	 * of \p **v** parameter).
 	 * \tparam CharType character type (typically `char` or `wchar_t`) of the
-	 * output buffer \p **buffer**
+	 * output buffer \p **buffer**.
 	 *
-	 * \param v floating point value to print
-	 * \param buffer large enough character buffer to print to
+	 * \param v floating point value to print.
+	 * \param buffer large enough character buffer to print to.
 	 * \param length output parameter to return the length of printed
-	 * representation
+	 * representation.
 	 * \param K output parameter to return **K** (decimal exponent) of the
-	 * value
+	 * value.
 	 *
 	 * \see `max_digits()`
 	 * \see `max_buffer_size()`

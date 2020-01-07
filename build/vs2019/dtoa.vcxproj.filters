@@ -39,36 +39,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\double-conversion\bignum-dtoa.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\bignum.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\cached-powers.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\diy-fp.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\double-conversion.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\fast-dtoa.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\fixed-dtoa.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\ieee.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\strtod.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\double-conversion\utils.h">
-      <Filter>double-conversion</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h">
       <Filter>emyg</Filter>
     </ClInclude>
@@ -219,32 +189,44 @@
     <ClInclude Include="..\..\src\ryu\ryu2.h">
       <Filter>ryu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\bignum.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\bignum-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\cached-powers.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\diy-fp.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\double-conversion.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\double-to-string.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\fast-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\fixed-dtoa.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\ieee.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\string-to-double.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\strtod.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\double-conversion\utils.h">
+      <Filter>double-conversion</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\bignum.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\cached-powers.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\diy-fp.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\double-conversion.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\double-conversion\strtod.cc">
-      <Filter>double-conversion</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
     <ClCompile Include="..\..\src\emygtest.cpp" />
     <ClCompile Include="..\..\src\floaxietest.cpp" />
@@ -287,5 +269,29 @@
     </ClCompile>
     <ClCompile Include="..\..\src\ryutest.cpp" />
     <ClCompile Include="..\..\src\to_chars.cpp" />
+    <ClCompile Include="..\..\src\double-conversion\bignum.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\cached-powers.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\double-to-string.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\string-to-double.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\strtod.cc">
+      <Filter>double-conversion</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

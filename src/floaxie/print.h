@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alexey Chernov <4ernov@gmail.com>
+ * Copyright 2015, 2016 Alexey Chernov <4ernov@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@
 #include <string>
 #include <cstdint>
 
-#include "type_punning_cast.h"
-#include "bit_ops.h"
+#include "floaxie/type_punning_cast.h"
+#include "floaxie/bit_ops.h"
 
 namespace floaxie
 {

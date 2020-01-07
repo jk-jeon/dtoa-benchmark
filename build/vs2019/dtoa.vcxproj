@@ -108,9 +108,11 @@
     <ClInclude Include="..\..\src\double-conversion\cached-powers.h" />
     <ClInclude Include="..\..\src\double-conversion\diy-fp.h" />
     <ClInclude Include="..\..\src\double-conversion\double-conversion.h" />
+    <ClInclude Include="..\..\src\double-conversion\double-to-string.h" />
     <ClInclude Include="..\..\src\double-conversion\fast-dtoa.h" />
     <ClInclude Include="..\..\src\double-conversion\fixed-dtoa.h" />
     <ClInclude Include="..\..\src\double-conversion\ieee.h" />
+    <ClInclude Include="..\..\src\double-conversion\string-to-double.h" />
     <ClInclude Include="..\..\src\double-conversion\strtod.h" />
     <ClInclude Include="..\..\src\double-conversion\utils.h" />
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h" />
@@ -167,14 +169,30 @@
     <ClInclude Include="..\..\src\timer.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc" />
-    <ClCompile Include="..\..\src\double-conversion\bignum.cc" />
-    <ClCompile Include="..\..\src\double-conversion\cached-powers.cc" />
-    <ClCompile Include="..\..\src\double-conversion\diy-fp.cc" />
-    <ClCompile Include="..\..\src\double-conversion\double-conversion.cc" />
-    <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc" />
-    <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc" />
-    <ClCompile Include="..\..\src\double-conversion\strtod.cc" />
+    <ClCompile Include="..\..\src\double-conversion\bignum-dtoa.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\bignum.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\cached-powers.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\double-to-string.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fast-dtoa.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\fixed-dtoa.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\string-to-double.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\..\src\double-conversion\strtod.cc">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\doubleconvtest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
     </ClCompile>
@@ -203,7 +221,7 @@
     </ClCompile>
     <ClCompile Include="..\..\src\grisu_exact.cpp" />
     <ClCompile Include="..\..\src\jkjgrisu.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\milotest.cpp">
@@ -231,7 +249,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\to_chars.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

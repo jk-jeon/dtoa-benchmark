@@ -23,7 +23,7 @@ static uint64_t tens[] = {
     10U, 1U
 };
 
-static /*inline */uint64_t get_dbits(double d)
+static inline uint64_t get_dbits(double d)
 {
     union {
         double   dbl;

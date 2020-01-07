@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Alexey Chernov <4ernov@gmail.com>
+ * Copyright 2015-2017 Alexey Chernov <4ernov@gmail.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,10 +27,10 @@
 #include <cstddef>
 #include <cassert>
 
-#include "powers_ten_single.h"
-#include "powers_ten_double.h"
+#include "floaxie/powers_ten_single.h"
+#include "floaxie/powers_ten_double.h"
 
-#include "diy_fp.h"
+#include "floaxie/diy_fp.h"
 
 namespace floaxie
 {
