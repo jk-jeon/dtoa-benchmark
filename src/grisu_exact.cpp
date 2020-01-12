@@ -58,12 +58,12 @@ void dtoa_grisu_exact(double x, char* buffer)
 	// Step 5: Print the decimal representation.
 	int index = 0;
 	bool is_negative;
-	auto v = jkj::grisu_exact<false>(x, [&is_negative](auto&& dispatcher) {
-			is_negative = dispatcher.is_negative();
-			return dispatcher();
-		},
+	auto v = jkj::grisu_exact<false>(x,
 		jkj::grisu_exact_rounding_modes::nearest_to_even{},
-		jkj::grisu_exact_correct_rounding::tie_to_up{});
+		jkj::grisu_exact_correct_rounding::tie_to_even{},
+		[&is_negative](auto br) {
+			is_negative = br.is_negative();
+		});
 
 	if (is_negative) {
 		buffer[index++] = '-';

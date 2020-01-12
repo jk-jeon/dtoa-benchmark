@@ -1,3 +1,20 @@
+// Copyright 2020 Junekey Jeon
+//
+// The contents of this file may be used under the terms of
+// the Apache License v2.0 with LLVM Exceptions.
+//
+//    (See accompanying file LICENSE-Apache or copy at
+//     https://llvm.org/foundation/relicensing/LICENSE.txt)
+//
+// Alternatively, the contents of this file may be used under the terms of
+// the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE-Boost or copy at
+//     https://www.boost.org/LICENSE_1_0.txt)
+//
+// Unless required by applicable law or agreed to in writing, this software
+// is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.
+
 #ifndef __JKJ_GRISU_EXACT__
 #define __JKJ_GRISU_EXACT__
 
@@ -134,7 +151,7 @@ namespace jkj {
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
-		// Fast and accurate log floor/ceil calculation
+		// Fast and accurate log floor calculation
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		// The result of this function is accurate for
@@ -243,6 +260,8 @@ namespace jkj {
 			// during the decreasing search, it would get multiplied by 10^(initial_kappa-min_kappa-1)
 			static_assert(floor_log2_pow10(initial_kappa - min_kappa - 1) <
 				32 - int(extended_precision - precision - 1) - gamma);
+			// Ensure 10^initial_kappa fits inside 32 bits
+			static_assert(initial_kappa < floor_log10_pow2(32));
 
 			static constexpr int min_k = -floor_log10_pow2(max_exponent + 1 - alpha);
 			static constexpr int max_k = -floor_log10_pow2(min_exponent + 1 - alpha);
@@ -275,8 +294,7 @@ namespace jkj {
 
 			// Ensure that fractional parts cannot vanish when exponent is the minimum
 			static_assert(min_exponent < integer_check_exponent_lower_bound_for_q_mp_m3);
-
-
+			
 			static constexpr int zero_fractional_part_min_exponent_normal =
 				floor_log5_pow2(-(int(extended_precision - precision) - 2 + alpha)) -
 				(int(extended_precision - precision) - 2);
@@ -294,7 +312,7 @@ namespace jkj {
 
 		////////////////////////////////////////////////////////////////////////////////////////
 		// Computed cache entries
-		// !! You SHOULD regenerated the cache if you modify alpha and gamma !!
+		// !! You SHOULD regenerate the cache if you modify alpha and gamma !!
 		////////////////////////////////////////////////////////////////////////////////////////
 
 		template <class Float>
@@ -1012,6 +1030,7 @@ namespace jkj {
 			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
 		}
 
+		// Forward declaration of the main class
 		template <class Float>
 		class grisu_exact_impl;
 	}
@@ -1153,22 +1172,19 @@ namespace jkj {
 		}
 	};
 
-	namespace grisu_exact_detail {
-		// In order to reduce the argument passing overhead,
-		// this class should be as simple as possible.
-		// (e.g., no inheritance, no private non-static data member, etc.;
-		// this is an unfortunate fact about x64 calling convention.)
-		template <class Float, class IntervalTypeProvider, class CorrectRoundingSearch>
-		struct grisu_exact_args
-		{
-			bit_representation_t<Float> br;
-		};
+	template <class Float>
+	bit_representation_t<Float> get_bit_representation(Float x) noexcept {
+		bit_representation_t<Float> br;
+		std::memcpy(&br.f, &x, sizeof(Float));
+		return br;
 	}
 
 	// Determine what to do about the correct rounding guarantee
 	namespace grisu_exact_correct_rounding {
 		enum tag_t {
 			do_not_care_tag,
+			tie_to_even_tag,
+			tie_to_odd_tag,
 			tie_to_up_tag,
 			tie_to_down_tag
 		};
@@ -1180,41 +1196,56 @@ namespace jkj {
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, do_not_care>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, do_not_care>(br);
 			}
 		};
 
-		// Perform correct rounding search; tie to up
+		// Perform correct rounding search; tie-to-even
+		struct tie_to_even {
+			static constexpr tag_t tag = tie_to_even_tag;
+			template <bool return_sign, class Float, class IntervalTypeProvider>
+			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
+				IntervalTypeProvider&&) const
+			{
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_even>(br);
+			}
+		};
+
+		// Perform correct rounding search; tie-to-odd
+		struct tie_to_odd {
+			static constexpr tag_t tag = tie_to_even_tag;
+			template <bool return_sign, class Float, class IntervalTypeProvider>
+			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
+				IntervalTypeProvider&&) const
+			{
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_odd>(br);
+			}
+		};
+
+		// Perform correct rounding search; tie-to-up
 		struct tie_to_up {
 			static constexpr tag_t tag = tie_to_up_tag;
 			template <bool return_sign, class Float, class IntervalTypeProvider>
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, tie_to_up>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_up>(br);
 			}
 		};
 
-		// Perform correct rounding search; tie to down
+		// Perform correct rounding search; tie-to-down
 		struct tie_to_down {
 			static constexpr tag_t tag = tie_to_down_tag;
 			template <bool return_sign, class Float, class IntervalTypeProvider>
 			fp_t<Float, return_sign> delegate(bit_representation_t<Float> br,
 				IntervalTypeProvider&&) const
 			{
-				using arg_type = grisu_exact_detail::grisu_exact_args<Float,
-					std::remove_cvref_t<IntervalTypeProvider>, tie_to_down>;
-
-				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<return_sign>(
-					arg_type{ br });
+				return grisu_exact_detail::grisu_exact_impl<Float>::template compute<
+					return_sign, std::remove_cvref_t<IntervalTypeProvider>, tie_to_down>(br);
 			}
 		};
 	}
@@ -1668,19 +1699,22 @@ namespace jkj {
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
-			static fp_t<Float, return_sign> compute(
-				grisu_exact_args<Float, IntervalTypeProvider, CorrectRoundingSearch> args)
+			static fp_t<Float, return_sign> compute(bit_representation_t<Float> br)
 			{
+				//////////////////////////////////////////////////////////////////////
+				// Step 1: integer promotion & Grisu multiplier calculation
+				//////////////////////////////////////////////////////////////////////
+
 				fp_t<Float, return_sign> ret_value;
 
-				auto interval_type = IntervalTypeProvider{}(args.br);
+				auto interval_type = IntervalTypeProvider{}(br);
 
 				if constexpr (return_sign) {
-					ret_value.is_negative = args.br.is_negative();
+					ret_value.is_negative = br.is_negative();
 				}
-				auto significand = args.br.f << exponent_bits;
+				auto significand = br.f << exponent_bits;
 
-				auto exponent = int((args.br.f << 1) >> (precision + 1));
+				auto exponent = int((br.f << 1) >> (precision + 1));
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= sign_bit_mask;
@@ -1748,6 +1782,11 @@ namespace jkj {
 					false, cache, minus_beta + 1);
 				auto approx_y = zi - epsiloni;
 
+
+				//////////////////////////////////////////////////////////////////////
+				// Step 2: Search for kappa
+				//////////////////////////////////////////////////////////////////////
+
 				// Comparison of fractional parts is delayed
 				auto zf_vs_deltaf = zf_vs_deltaf_t::not_compared_yet;
 
@@ -1790,8 +1829,8 @@ namespace jkj {
 
 				// Decrease kappa by 1
 				ret_value.significand *= 10;
-				ret_value.significand += r / power_of_10<initial_kappa - 1>;
-				r %= power_of_10<initial_kappa - 1>;
+				ret_value.significand += std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - 1>);
+				r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - 1>);
 				--ret_value.exponent;
 
 				divisor = power_of_10<initial_kappa - 1>;
@@ -1824,6 +1863,11 @@ namespace jkj {
 					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
+
+
+				//////////////////////////////////////////////////////////////////////
+				// Step 3: Dealing with the right endpoint (search for kappa')
+				//////////////////////////////////////////////////////////////////////
 
 			boundary_adjustment_and_return_label:
 				// If right endpoint is not included, we should check if z mod 10^kappa = 0
@@ -1878,7 +1922,11 @@ namespace jkj {
 					}
 				}
 
-				// Correct rounding search
+				
+				//////////////////////////////////////////////////////////////////////
+				// Step 4: Correct rounding search
+				//////////////////////////////////////////////////////////////////////
+
 				if constexpr (CorrectRoundingSearch::tag !=
 					grisu_exact_correct_rounding::do_not_care_tag &&
 					IntervalTypeProvider::tag ==
@@ -1920,8 +1968,40 @@ namespace jkj {
 							auto two_yi = compute_mul(significand, cache, minus_beta - 1);
 
 							if constexpr (CorrectRoundingSearch::tag ==
-								grisu_exact_correct_rounding::tie_to_down_tag)
+								grisu_exact_correct_rounding::tie_to_even_tag ||
+								CorrectRoundingSearch::tag ==
+								grisu_exact_correct_rounding::tie_to_odd_tag)
 							{
+								// Compare round-up vs round-down
+								// round-up  : (two_yi + 1) / 2
+								// round-down: (two_yi + 1) / 2 if !is_prodict_integer, two_yi / 2 otherwise
+								// If they can differ, that is, if is_product_integer,
+								// then prefer even/odd
+								if (is_product_integer<integer_check_case_id::two_times_fc>(
+									significand, exponent, minus_k))
+								{
+									if constexpr (CorrectRoundingSearch::tag ==
+										grisu_exact_correct_rounding::tie_to_even_tag)
+									{
+										ret_value.significand = (two_yi / 2) % 2 == 1 ?
+											(two_yi + 1) / 2 : two_yi / 2;
+									}
+									else
+									{
+										ret_value.significand = (two_yi / 2) % 2 == 0 ?
+											(two_yi + 1) / 2 : two_yi / 2;
+									}
+								}
+								else {
+									ret_value.significand = (two_yi + 1) / 2;
+								}
+							}
+							else if constexpr (CorrectRoundingSearch::tag ==
+								grisu_exact_correct_rounding::tie_to_up_tag)
+							{
+								ret_value.significand = (two_yi + 1) / 2;
+							}
+							else {
 								if (!is_product_integer<integer_check_case_id::two_times_fc>(
 									significand, exponent, minus_k))
 								{
@@ -1929,9 +2009,6 @@ namespace jkj {
 								}
 
 								ret_value.significand = two_yi / 2;
-							}
-							else {
-								ret_value.significand = (two_yi + 1) / 2;
 							}
 
 							return ret_value;
@@ -2024,7 +2101,34 @@ namespace jkj {
 								--steps;
 							else if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
-									grisu_exact_correct_rounding::tag_t::tie_to_up_tag)
+									grisu_exact_correct_rounding::tie_to_even_tag ||
+									CorrectRoundingSearch::tag ==
+									grisu_exact_correct_rounding::tie_to_odd_tag)
+								{
+									// Compare round-up vs round-down
+									// round-up  : steps - 1
+									// round-down: steps - 1 if !is_product_integer, steps otherwise
+									// If they differ, that is, if is_product_integer,
+									// then prefer even/odd
+									if (is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k))
+									{
+										// steps vs steps - 1
+										if constexpr (CorrectRoundingSearch::tag ==
+											grisu_exact_correct_rounding::tie_to_even_tag)
+										{
+											steps = (ret_value.significand - steps) % 2 == 1 ? steps - 1 : steps;
+										}
+										else
+										{
+											steps = (ret_value.significand - steps) % 2 == 0 ? steps - 1 : steps;
+										}
+									}
+									else {
+										--steps;
+									}
+								}
+								else if constexpr (CorrectRoundingSearch::tag ==
+									grisu_exact_correct_rounding::tie_to_up_tag)
 								{
 									--steps;
 								}
@@ -2454,8 +2558,9 @@ namespace jkj {
 				std::uint32_t& epsiloni,
 				cache_entry_type const& cache)
 			{
-				auto quotient = r / power_of_10<initial_kappa - lambda>;
-				auto new_r = r % power_of_10<initial_kappa - lambda>;
+				// We already know r < 10^initial_kappa < 2^32
+				auto quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
 
 				// Check if the remainder is still greater than or equal to the delta
 				// remainder should be strictly greater if the left boundary is contained
@@ -2488,99 +2593,41 @@ namespace jkj {
 				return false;
 			}
 		};
-
-		// Run the actual algorithm depending on the given rounding mode and correct rounding guarantee
-		template <bool return_sign, class Float, class RoundingMode, class CorrectRoundingSearch>
-		struct dispatcher :
-			public bit_representation_t<Float>,
-			private RoundingMode,
-			private CorrectRoundingSearch
-		{
-			using float_type = Float;
-
-			template <class RoundingModeParam, class CorrectRoundingSearchParam>
-			dispatcher(bit_representation_t<Float> br,
-				RoundingModeParam&& rounding_mode, CorrectRoundingSearchParam&& crs) :
-				bit_representation_t<Float>(br),
-				RoundingMode(std::forward<RoundingModeParam>(rounding_mode)),
-				CorrectRoundingSearch(std::forward<CorrectRoundingSearchParam>(crs)) {}
-
-			bit_representation_t<Float> const& bit_representation() const noexcept {
-				return static_cast<bit_representation_t<Float> const&>(*this);
-			}
-
-			fp_t<Float, return_sign> operator()() & {
-				return static_cast<RoundingMode&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() const& {
-				return static_cast<RoundingMode const&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch const&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() && {
-				return static_cast<RoundingMode&&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch&&>(*this));
-			}
-			fp_t<Float, return_sign> operator()() const&& {
-				return static_cast<RoundingMode const&&>(*this).template delegate<return_sign>(
-					bit_representation(), static_cast<CorrectRoundingSearch const&&>(*this));
-			}
-		};
 	}
 
-	// Determines the control flow of the algorithm depending on the type of the input
-	// Thr set of these policies is intended to be extensible.
+	// What to do with non-finite inputs?
 	namespace grisu_exact_case_handlers {
-		// Convenient helper function to get bit representation from dispatcher
-		template <bool return_sign, class Float, class RoundingMode, class CorrectRoundingSearch>
-		auto get_bit_representation(grisu_exact_detail::dispatcher<
-			return_sign, Float, RoundingMode, CorrectRoundingSearch> const& dispatcher) noexcept
-			-> bit_representation_t<Float> const&
-		{
-			return dispatcher.bit_representation();
-		}
-
 		struct assert_finite {
-			template <class Dispatcher>
-			auto operator()(Dispatcher&& dispatcher) const
+			template <class Float>
+			void operator()(bit_representation_t<Float> br) const
 			{
-				assert(get_bit_representation(dispatcher).is_finite());
-				return dispatcher();
+				assert(br.is_finite());
 			}
 		};
 
 		// This policy is mainly for debugging purpose
 		struct ignore_special_cases {
-			template <class Dispatcher>
-			auto operator()(Dispatcher&& dispatcher) const
+			template <class Float>
+			void operator()(bit_representation_t<Float> br) const
 			{
-				return dispatcher();
 			}
 		};
 	}
 
 	template <bool return_sign = true, class Float,
-		class CaseHandler = grisu_exact_case_handlers::assert_finite,
 		class RoundingMode = grisu_exact_rounding_modes::nearest_to_even,
-		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_up,
-		class... AdditionalArgs
+		class CorrectRoundingSearch = grisu_exact_correct_rounding::tie_to_even,
+		class CaseHandler = grisu_exact_case_handlers::assert_finite
 	>
-	auto grisu_exact(Float x,
-		CaseHandler&& case_handler = {},
+	fp_t<Float, return_sign> grisu_exact(Float x,
 		RoundingMode&& rounding_mode = {},
 		CorrectRoundingSearch&& crs = {},
-		AdditionalArgs&&... args) ->
-		decltype(case_handler(std::declval<grisu_exact_detail::dispatcher<return_sign, Float,
-			std::remove_cvref_t<RoundingMode>, std::remove_cvref_t<CorrectRoundingSearch>>>(),
-			std::forward<AdditionalArgs>(args)...))
+		CaseHandler&& case_handler = {})
 	{
-		bit_representation_t<Float> br;
-		std::memcpy(&br.f, &x, sizeof(Float));
-
-		return case_handler(grisu_exact_detail::dispatcher<return_sign, Float,
-			std::remove_cvref_t<RoundingMode>, std::remove_cvref_t<CorrectRoundingSearch>>{
-			br, std::forward<RoundingMode>(rounding_mode), std::forward<CorrectRoundingSearch>(crs)
-		}, std::forward<AdditionalArgs>(args)...);
+		auto br = get_bit_representation(x);
+		case_handler(br);
+		return std::forward<RoundingMode>(rounding_mode).template delegate<return_sign>(
+			br, std::forward<CorrectRoundingSearch>(crs));
 	}
 }
 
