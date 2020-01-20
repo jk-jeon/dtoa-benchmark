@@ -4,13 +4,9 @@
     "\\build",
     "\\build\\vs2019",
     "\\src",
-    "\\src\\double-conversion",
-    "\\src\\emyg",
-    "\\src\\floaxie",
-    "\\src\\gay",
-    "\\src\\grisu",
-    "\\stb_sprintf"
+    "\\src\\fmt",
+    "\\src\\grisu_exact"
   ],
-  "SelectedNode": "\\build\\vs2019\\benchmark.sln",
+  "SelectedNode": "\\src\\grisu_exact.cpp",
   "PreviewInSolutionExplorer": false
 }
