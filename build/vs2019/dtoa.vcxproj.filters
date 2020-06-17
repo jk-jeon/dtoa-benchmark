@@ -162,33 +162,6 @@
     <ClInclude Include="..\..\src\grisu_exact\grisu_exact.h">
       <Filter>grisu_exact</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\ryu\common.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\d2fixed_full_table.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\d2s.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\d2s_full_table.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\d2s_intrinsics.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\digit_table.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\ryu.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\ryu_generic_128.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\ryu\ryu2.h">
-      <Filter>ryu</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\double-conversion\bignum.h">
       <Filter>double-conversion</Filter>
     </ClInclude>
@@ -225,6 +198,30 @@
     <ClInclude Include="..\..\src\double-conversion\utils.h">
       <Filter>double-conversion</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\ryu\ryu.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\common.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\d2s_intrinsics.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\digit_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\f2s_full_table.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ryu\f2s_intrinsics.h">
+      <Filter>ryu</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
@@ -258,15 +255,6 @@
     <ClCompile Include="..\..\src\milo_only_Grisu2.cpp" />
     <ClCompile Include="..\..\src\jkjgrisu.cpp" />
     <ClCompile Include="..\..\src\grisu_exact.cpp" />
-    <ClCompile Include="..\..\src\ryu\d2fixed.c">
-      <Filter>ryu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\ryu\d2s.c">
-      <Filter>ryu</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\ryu\f2s.c">
-      <Filter>ryu</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\ryutest.cpp" />
     <ClCompile Include="..\..\src\to_chars.cpp" />
     <ClCompile Include="..\..\src\double-conversion\bignum.cc">
@@ -292,6 +280,12 @@
     </ClCompile>
     <ClCompile Include="..\..\src\double-conversion\strtod.cc">
       <Filter>double-conversion</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryu\d2s.c">
+      <Filter>ryu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ryu\f2s.c">
+      <Filter>ryu</Filter>
     </ClCompile>
   </ItemGroup>
 </Project>
