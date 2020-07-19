@@ -36,6 +36,8 @@
 // No, they aren't.
 #ifndef __clang__
 #define JKJ_GRISU_EXACT_SAFEBUFFERS __declspec(safebuffers)
+#else
+#define JKJ_GRISU_EXACT_SAFEBUFFERS
 #endif
 #else
 #define JKJ_GRISU_EXACT_SAFEBUFFERS
@@ -156,9 +158,42 @@ namespace jkj {
 
 		// Get upper 32-bits of multiplication of a 32-bit unsigned integer and a 64-bit unsigned integer
 		inline std::uint32_t umul96_upper32(std::uint32_t x, std::uint64_t y) noexcept {
-			auto g0 = std::uint64_t(x) * (y >> 32);
-			auto g1 = std::uint64_t(x) * (y & 0xffffffff);
-			return std::uint32_t((g0 + (g1 >> 32)) >> 32);
+			return std::uint32_t(umul128_upper64(x, y));
+		}
+
+		// Check if a number is a multiple of 2^exp
+		template <class UInt>
+		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
+			static_assert(std::is_same_v<UInt, std::uint32_t> || std::is_same_v<UInt, std::uint64_t>);
+			assert(exp >= 1);
+			assert(x != 0);
+#if defined(_MSC_VER) && defined(_M_X64)
+			unsigned long index;
+			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+				_BitScanForward(&index, x);
+			}
+			else {
+				_BitScanForward64(&index, x);
+			}
+			return int(index) >= exp;
+#elif (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
+			int index;
+			if constexpr (std::is_same_v<UInt, std::uint32_t>) {
+				static_assert(sizeof(unsigned long) == 4,
+					"jkj::grisu_exact: unsigned long should be 4 bytes long");
+				index = __builtin_ctz((unsigned long)x);
+			}
+			else {
+				static_assert(sizeof(unsigned long long) == 8,
+					"jkj::grisu_exact: unsigned long long should be 8 bytes long");
+				index = __builtin_ctzll((unsigned long long)x);
+			}
+			return index >= exp;
+#else
+			if (exp >= int(sizeof(UInt) * 8))
+				return false;
+			return f == ((f >> exp) << exp); 
+#endif
 		}
 
 
@@ -191,8 +226,7 @@ namespace jkj {
 		}
 
 
-		// The result of this function is accurate for
-		// exp in [-65536,+65536], but may not be valid outside.
+		// This function is accurate if e is in the range [-65536,+65536]
 		// This function is only executed at compile-time,
 		// and never executed at runtime.
 		constexpr int floor_log5_pow2(int e) noexcept {
@@ -1042,7 +1076,7 @@ namespace jkj {
 
 		// Forward declaration of the main class
 		template <class Float>
-		class grisu_exact_impl;
+		struct grisu_exact_impl;
 	}
 
 	////////////////////////////////////////////////////////////////////////////////////////
@@ -1573,11 +1607,13 @@ namespace jkj {
 	
 	namespace grisu_exact_detail {
 		////////////////////////////////////////////////////////////////////////////////////////
-		// Utilities for computing the integer part of multiplication with 10^k
+		// The main algorithm
 		////////////////////////////////////////////////////////////////////////////////////////
 
+		// Get sign/decimal significand/decimal exponent from
+		// the bit representation of a floating-point number
 		template <class Float>
-		struct compute_mul_helper : public common_info<Float>
+		struct grisu_exact_impl : private common_info<Float>
 		{
 			using extended_significand_type =
 				typename common_info<Float>::extended_significand_type;
@@ -1587,77 +1623,6 @@ namespace jkj {
 			using common_info<Float>::precision;
 			using common_info<Float>::extended_precision;
 			using common_info<Float>::cache_precision;
-
-			static extended_significand_type compute_mul(
-				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				if constexpr (sizeof(Float) == 4) {
-					return umul96_upper32(f, cache) >> minus_beta;
-				}
-				else {
-					return umul192_upper64(f, cache) >> minus_beta;
-				}
-			}
-
-			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
-				static constexpr auto intermediate_precision =
-					sizeof(Float) == 4 ? cache_precision : extended_precision;
-				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
-					cache_entry_type, extended_significand_type>;
-
-				intermediate_type r;
-				if constexpr (sizeof(Float) == 4) {
-					r = cache;
-				}
-				else {
-					r = cache.high();
-				}
-
-				// For nearest rounding
-				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
-				{
-					if (is_edge_case)
-						r = (r >> 1) + (r >> 2);
-
-					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-				}
-				// For left-directed rounding
-				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
-				{
-					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-				}
-				// For right-directed rounding
-				else {
-					if (is_edge_case) {
-						return std::uint32_t(r >> (intermediate_precision - (q_mp_m1 - 1) + minus_beta));
-					}
-					else {
-						return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
-					}
-				}
-			}
-		};
-
-		////////////////////////////////////////////////////////////////////////////////////////
-		// The main algorithm
-		////////////////////////////////////////////////////////////////////////////////////////
-
-		// Get sign/decimal significand/decimal exponent from
-		// the bit representation of a floating-point number
-		template <class Float>
-		class grisu_exact_impl : private compute_mul_helper<Float>
-		{
-			using extended_significand_type =
-				typename common_info<Float>::extended_significand_type;
-			using cache_entry_type =
-				typename common_info<Float>::cache_entry_type;
-
-			using common_info<Float>::precision;
-			using common_info<Float>::extended_precision;
 			using common_info<Float>::sign_bit_mask;
 			using common_info<Float>::exponent_bits;
 			using common_info<Float>::exponent_bias;
@@ -1695,17 +1660,7 @@ namespace jkj {
 			template <unsigned int e>
 			static constexpr extended_significand_type power_of_10 = compute_power(10, e);
 
-			using compute_mul_helper<Float>::compute_mul;
 
-			template <grisu_exact_rounding_modes::tag_t tag>
-			static std::uint32_t compute_delta(bool is_edge_case,
-				cache_entry_type const& cache, int minus_beta) noexcept
-			{
-				return compute_mul_helper<Float>::template compute_delta<tag>(
-					is_edge_case, cache, minus_beta);
-			}
-
-		public:
 			//// The main algorithm assumes the input is a normal/subnormal finite number
 
 			template <bool return_sign, class IntervalTypeProvider, class CorrectRoundingSearch>
@@ -1760,7 +1715,7 @@ namespace jkj {
 				assert(-minus_beta >= alpha && -minus_beta <= gamma);
 
 				// Compute zi and deltai
-				auto cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
+				auto const cache = jkj::grisu_exact_detail::get_cache<Float>(-minus_k);
 
 				extended_significand_type zi;
 				if constexpr (IntervalTypeProvider::tag ==
@@ -1952,12 +1907,12 @@ namespace jkj {
 					// We already know r is at most deltai
 					deltai -= std::uint32_t(r);
 
-					auto current_digit = ret_value.significand % 10;
+					auto const current_digit = ret_value.significand % 10;
 
 					// Perform binary search to find the minimum
 					auto steps = current_digit / 2;
 					while (steps != 0) {
-						auto displacement = steps * divisor;
+						auto const displacement = steps * divisor;
 						if (displacement > deltai)
 							steps /= 2;
 						else {
@@ -1982,7 +1937,7 @@ namespace jkj {
 							// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
 
 							// First, compute floor(2y)
-							auto two_yi = compute_mul(significand, cache, minus_beta - 1);
+							auto const two_yi = compute_mul(significand, cache, minus_beta - 1);
 
 							if constexpr (CorrectRoundingSearch::tag ==
 								grisu_exact_correct_rounding::tie_to_even_tag ||
@@ -2203,7 +2158,60 @@ namespace jkj {
 				return ret_value;
 			}
 
-		private:
+			static extended_significand_type compute_mul(
+				extended_significand_type f, cache_entry_type const& cache, int minus_beta) noexcept
+			{
+				if constexpr (sizeof(Float) == 4) {
+					return umul96_upper32(f, cache) >> minus_beta;
+				}
+				else {
+					return umul192_upper64(f, cache) >> minus_beta;
+				}
+			}
+
+			template <grisu_exact_rounding_modes::tag_t tag>
+			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
+				cache_entry_type const& cache, int minus_beta) noexcept
+			{
+				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
+				static constexpr auto intermediate_precision =
+					sizeof(Float) == 4 ? cache_precision : extended_precision;
+				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
+					cache_entry_type, extended_significand_type>;
+
+				intermediate_type r;
+				if constexpr (sizeof(Float) == 4) {
+					r = cache;
+				}
+				else {
+					r = cache.high();
+				}
+
+				// For nearest rounding
+				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
+				{
+					if (is_edge_case)
+						r = (r >> 1) + (r >> 2);
+
+					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+				}
+				// For left-directed rounding
+				else if constexpr (tag == grisu_exact_rounding_modes::left_closed_directed_tag)
+				{
+					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+				}
+				// For right-directed rounding
+				else {
+					if (is_edge_case) {
+						return std::uint32_t(r >> (intermediate_precision - (q_mp_m1 - 1) + minus_beta));
+					}
+					else {
+						return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
+					}
+				}
+			}
+
+
 			static bool is_zf_strictly_smaller_than_deltaf(
 				extended_significand_type fl,
 				int minus_beta, cache_entry_type const& cache) noexcept
@@ -2337,12 +2345,7 @@ namespace jkj {
 						if constexpr (case_id == integer_check_case_id::two_times_fc) {
 							--exp_2;
 						}
-
-						assert(exp_2 >= 1);
-						// Perhaps better to utilize TZCNT?
-						if (exp_2 >= int(extended_precision))
-							return false;
-						return f == ((f >> exp_2) << exp_2);
+						return divisible_by_power_of_2(f, exp_2);
 					}
 					// Both exponents for 2 and 5 are nonnegative
 					else if (exponent <= max_exponent_for_k_geq_0) {
@@ -2544,8 +2547,8 @@ namespace jkj {
 				std::uint32_t deltai,
 				cache_entry_type const& cache) noexcept
 			{
-				auto quotient = ret_value.significand / power_of_10<lambda>;
-				auto new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
+				auto const quotient = ret_value.significand / power_of_10<lambda>;
+				auto const new_r = r + divisor * (ret_value.significand % power_of_10<lambda>);
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
@@ -2598,8 +2601,8 @@ namespace jkj {
 				cache_entry_type const& cache) noexcept
 			{
 				// We already know r < 10^initial_kappa < 2^32
-				auto quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
-				auto new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+				auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
 
 				// Check if the remainder is still greater than or equal to the delta
 				// remainder should be strictly greater if the left boundary is contained
@@ -2633,7 +2636,7 @@ namespace jkj {
 				epsiloni *= std::uint32_t(power_of_10<lambda>);
 				ret_value.significand *= power_of_10<lambda>;
 				ret_value.significand += quotient;
-				ret_value.exponent -= lambda;				
+				ret_value.exponent -= lambda;
 				return false;
 			}
 		};
