@@ -138,6 +138,7 @@
     <ClInclude Include="..\..\src\floaxie\print.h" />
     <ClInclude Include="..\..\src\floaxie\static_pow.h" />
     <ClInclude Include="..\..\src\floaxie\type_punning_cast.h" />
+    <ClInclude Include="..\..\src\fmt\compile.h" />
     <ClInclude Include="..\..\src\fmt\core.h" />
     <ClInclude Include="..\..\src\fmt\format-inl.h" />
     <ClInclude Include="..\..\src\fmt\format.h" />

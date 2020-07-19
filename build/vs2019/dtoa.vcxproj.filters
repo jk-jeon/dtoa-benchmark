@@ -222,6 +222,9 @@
     <ClInclude Include="..\..\src\ryu\f2s_intrinsics.h">
       <Filter>ryu</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\fmt\compile.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
