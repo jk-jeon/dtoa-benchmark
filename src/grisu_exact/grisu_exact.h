@@ -161,6 +161,17 @@ namespace jkj {
 			return std::uint32_t(umul128_upper64(x, y));
 		}
 
+		// Compute b^e in compile-time
+		template <class UInt>
+		constexpr UInt compute_power(UInt b, unsigned int e) noexcept
+		{
+			UInt r = 1;
+			for (unsigned int i = 0; i < e; ++i) {
+				r *= b;
+			}
+			return r;
+		}
+
 		// Check if a number is a multiple of 2^exp
 		template <class UInt>
 		inline bool divisible_by_power_of_2(UInt x, int exp) noexcept {
@@ -190,11 +201,73 @@ namespace jkj {
 			}
 			return index >= exp;
 #else
-			if (exp >= int(sizeof(UInt) * 8))
+			if (exp >= int(sizeof(UInt) * 8)) {
 				return false;
+			}
 			return f == ((f >> exp) << exp); 
 #endif
 		}
+
+		// Check if a number is a multiple of 5^exp
+		// Use the algorithm introduced in
+		// "Quick Modular Calculations" by Cassio Neri, Dec. 2019, ACCU Overload Journal #154, page 13
+		template <class UInt>
+		constexpr UInt compute_modular_inverse_of_5() {
+			// Use Euler's theorem
+			// phi(p^k) = p^(k-1) * (p-1), so phi(2^n) = 2^(n-1).
+			// Hence, we need to compute 5^(2^(n-1) - 1), which is equal to
+			// 5^1 * 5^2 * 5^4 * 5^8 * ... * 5^(2^(n-2)),
+			// which can be computed as:
+			constexpr unsigned int n = std::numeric_limits<UInt>::digits;
+			UInt r = 5;
+			for (unsigned int e = 1; e <= n - 2; ++e) {
+				r = 5 * r * r;
+			}
+			return r;
+		}
+		template <class UInt>
+		struct divisibility_test_table_entry {
+			UInt	max_quotient;
+			UInt	mod_inv;
+		};
+		// std::array might be an overkill
+		template <class UInt, unsigned int N>
+		struct divisibility_test_table {
+			static constexpr auto size = N;
+			divisibility_test_table_entry<UInt> value[N];
+		};
+		template <class UInt>
+		constexpr auto generate_divisibility_test_table() noexcept {
+			constexpr std::size_t size = std::is_same_v<UInt, std::uint32_t> ? 12 : 24;
+			using return_type = divisibility_test_table<UInt, size>;
+
+			return_type table{};
+			for (unsigned int i = 0; i < size; ++i) {
+				table.value[i].max_quotient =
+					std::numeric_limits<UInt>::max() / compute_power(UInt(5), i);
+				table.value[i].mod_inv =
+					compute_power(compute_modular_inverse_of_5<UInt>(), i);
+			}
+
+			return table;
+		}
+		template <class UInt>
+		struct divisibility_test_table_holder {
+			static constexpr auto table = generate_divisibility_test_table<UInt>();
+		};
+		template <class UInt>
+		constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {
+			assert(exp < divisibility_test_table_holder<UInt>::table.size);
+			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
+			return (x * entry.mod_inv) <= entry.max_quotient;
+		}
+		template <unsigned int exp, class UInt>
+		constexpr UInt divide_by_power_of_5_assuming_divisibility(UInt x) noexcept {
+			static_assert(exp < divisibility_test_table_holder<UInt>::table.size);
+			auto const& entry = divisibility_test_table_holder<UInt>::table.value[exp];
+			return x * entry.mod_inv;
+		}
+		
 
 
 		////////////////////////////////////////////////////////////////////////////////////////
@@ -1069,8 +1142,7 @@ namespace jkj {
 
 		template <class Float>
 		constexpr typename common_info<Float>::cache_entry_type const& get_cache(int k) noexcept {
-			assert(k >= common_info<Float>::min_k &&
-				k <= common_info<Float>::max_k);
+			assert(k >= common_info<Float>::min_k && k <= common_info<Float>::max_k);
 			return cache_holder<Float>::cache[std::size_t(k - common_info<Float>::min_k)];
 		}
 
@@ -1152,7 +1224,11 @@ namespace jkj {
 		}
 
 		bool is_nonzero() const noexcept {
-			return (f & ~sign_bit_mask) != 0;
+			// vs (f & ~sign_bit_mask) != 0;
+			// It seems that there is no AND instruction for 64-bit immediate value in x86,
+			// thus (f & ~sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
+			// while this generates only two (shift, compare).
+			return (f << 1) != 0;
 		}
 
 		// Allows positive and negative zeros
@@ -1162,12 +1238,18 @@ namespace jkj {
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
 		bool is_negative() const noexcept {
-			return (f & sign_bit_mask) != 0;
+			// vs (f & sign_bit_mask) != 0;
+			// It seems that there is no AND instruction for 64-bit immediate value in x86,
+			// thus (f & sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
+			// while this generates only two (shift, compare).
+			return (f >> (extended_precision - 1)) != 0;
 		}
 
 		// Allows positive zero and positive NaN's, but not allow negative zero
 		bool is_positive() const noexcept {
-			return (f & sign_bit_mask) == 0;
+			// vs (f & sign_bit_mask) == 0;
+			// Ditto
+			return (f >> (extended_precision - 1)) == 0;
 		}
 
 		bool is_positive_infinity() const noexcept {
@@ -1190,8 +1272,9 @@ namespace jkj {
 		}
 
 		bool is_quiet_nan() const noexcept {
-			if (!is_nan())
+			if (!is_nan()) {
 				return false;
+			}
 
 			auto quiet_or_signal_indicator = extended_significand_type(1) << (precision - 1);
 			auto quiet_or_signal = f & quiet_or_signal_indicator;
@@ -1645,20 +1728,8 @@ namespace jkj {
 			using common_info<Float>::integer_check_exponent_upper_bound_for_p_p2;
 			using common_info<Float>::integer_check_exponent_upper_bound_for_p_p1;
 
-			static constexpr extended_significand_type compute_power(
-				extended_significand_type b, unsigned int e) noexcept
-			{
-				extended_significand_type r = 1;
-				for (unsigned int i = 0; i < e; ++i)
-					r *= b;
-				return r;
-			}
-
 			template <unsigned int e>
-			static constexpr extended_significand_type power_of_5 = compute_power(5, e);
-
-			template <unsigned int e>
-			static constexpr extended_significand_type power_of_10 = compute_power(10, e);
+			static constexpr auto power_of_10 = compute_power(extended_significand_type(10), e);
 
 
 			//// The main algorithm assumes the input is a normal/subnormal finite number
@@ -1679,8 +1750,8 @@ namespace jkj {
 					ret_value.is_negative = br.is_negative();
 				}
 				auto significand = br.f << exponent_bits;
-
-				auto exponent = int((br.f & ~sign_bit_mask) >> precision);
+				 
+				auto exponent = int((br.f >> precision) & (exponent_bits_mask >> precision));
 				// Deal with normal/subnormal dichotomy
 				if (exponent != 0) {
 					significand |= sign_bit_mask;
@@ -1776,37 +1847,79 @@ namespace jkj {
 					zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
 				}
 				
-				// Perform binary search
-				if constexpr (sizeof(Float) == 4) {
+				// Perform decreasing search
+				{
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 0 && max_kappa == 9 && initial_kappa == 2);
+					static_assert(initial_kappa - min_kappa <= 2);
 
-					decreasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, deltai, epsiloni, cache);
+					constexpr unsigned int lambda = 1;
+					// We already know r < 10^initial_kappa < 2^32
+					auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
+					auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
+
+					// Check if the remainder is still greater than or equal to the delta
+					// remainder should be strictly greater if the left boundary is contained
+
+					if (new_r < deltai) {
+						goto decrease_kappa_by_1_label;
+					}
+					else if (deltai == new_r) {
+						switch (zf_vs_deltaf) {
+						case zf_vs_deltaf_t::zf_smaller:
+							goto decrease_kappa_by_1_label;
+
+						case zf_vs_deltaf_t::not_compared_yet:
+							if (is_zf_smaller_than_deltaf<IntervalTypeProvider::tag>(significand,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
+								goto decrease_kappa_by_1_label;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+							break;
+
+						case zf_vs_deltaf_t::zf_larger:
+							// Do nothing; just to silence the warning
+							break;
+						}
+					}
+
+					// Decrease kappa by 1 + lambda (lambda = 1)
+					if constexpr (initial_kappa == 2) {
+						// kappa = 0
+						ret_value.significand = zi;
+						r = 0;
+					}
+					else {
+						static_assert(initial_kappa == 3);
+						// kappa = 1
+						ret_value.significand *= 100;
+						ret_value.significand += 10 * quotient + (std::uint32_t(new_r) / 10);
+						r = (std::uint32_t(new_r) % 10) * 10;
+					}
+					ret_value.exponent -= 2;
+					deltai *= std::uint32_t(power_of_10<lambda>);
+					epsiloni *= std::uint32_t(power_of_10<lambda>);
+
+					divisor = power_of_10<initial_kappa - 1>;
+					goto boundary_adjustment_and_return_label;
+
+				decrease_kappa_by_1_label:
+					// Decrease kappa by 1
+					ret_value.significand *= 10;
+					ret_value.significand += quotient;
+					r = new_r;
+					--ret_value.exponent;
+
+					divisor = power_of_10<initial_kappa - 1>;
+					goto boundary_adjustment_and_return_label;
 				}
-				else {
-					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 1 && max_kappa == 18 && initial_kappa == 3);
-
-					decreasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, deltai, epsiloni, cache);
-				}
-
-				// Decrease kappa by 1
-				ret_value.significand *= 10;
-				ret_value.significand += std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - 1>);
-				r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - 1>);
-				--ret_value.exponent;
-
-				divisor = power_of_10<initial_kappa - 1>;
-
-				goto boundary_adjustment_and_return_label;
 
 			increasing_search_label:
 				// Perform binary search
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 0 && max_kappa == 9 && initial_kappa == 2);
+					static_assert(max_kappa - initial_kappa < 8);
 
 					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
@@ -1817,7 +1930,7 @@ namespace jkj {
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(min_kappa == 1 && max_kappa == 18 && initial_kappa == 3);
+					static_assert(max_kappa - initial_kappa < 16);
 
 					increasing_search<8, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
 						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
@@ -1837,7 +1950,7 @@ namespace jkj {
 			boundary_adjustment_and_return_label:
 				// If right endpoint is not included, we should check if z mod 10^kappa = 0
 				if (!interval_type.include_right_endpoint() && r == 0) {
-					static constexpr integer_check_case_id case_id =
+					constexpr integer_check_case_id case_id =
 						IntervalTypeProvider::tag == grisu_exact_rounding_modes::to_nearest_tag ?
 						integer_check_case_id::fc_pm_2_to_the_q_mp_m2_generic :
 						integer_check_case_id::other;
@@ -1846,8 +1959,9 @@ namespace jkj {
 						// Decrease kappa until 10^kappa becomes smaller than delta
 						// If left boundary is included, 10^kappa can also be equal to delta
 						while (true) {
-							if (divisor < deltai)
+							if (divisor < deltai) {
 								break;
+							}
 							else if (divisor == deltai) {
 								// For nearest rounding only
 								if constexpr (IntervalTypeProvider::tag ==
@@ -1913,8 +2027,9 @@ namespace jkj {
 					auto steps = current_digit / 2;
 					while (steps != 0) {
 						auto const displacement = steps * divisor;
-						if (displacement > deltai)
+						if (displacement > deltai) {
 							steps /= 2;
+						}
 						else {
 							ret_value.significand -= steps;
 							deltai -= std::uint32_t(displacement);
@@ -1926,12 +2041,10 @@ namespace jkj {
 					IntervalTypeProvider::tag ==
 					grisu_exact_rounding_modes::to_nearest_tag)
 				{
-					// This procedure strictly depends on our specific choice of these parameters:
-					static_assert(
-						(sizeof(Float) == 4 && min_kappa == 0 && max_kappa == 9) ||
-						(sizeof(Float) == 8 && min_kappa == 1 && max_kappa == 18));
-
 					if constexpr (sizeof(Float) == 4) {
+						// This procedure strictly depends on our specific choice of these parameters:
+						static_assert(min_kappa == 0);
+
 						// Should treat the case kappa == 0 separately
 						if (ret_value.exponent == minus_k) {
 							// (floor(2y) + 1) / 2 for tie-to-up, ceil(2y) / 2 for tie-to-down
@@ -1985,6 +2098,10 @@ namespace jkj {
 
 							return ret_value;
 						}
+					}
+					else {
+						// This procedure strictly depends on our specific choice of these parameters:
+						static_assert(min_kappa > 0);
 					}
 
 					// Distribution of the quotient with uniform random data:
@@ -2078,8 +2195,9 @@ namespace jkj {
 						// Check fractional if necessary
 						if (epsiloni == 0) {
 							auto yi = compute_mul(significand, cache, minus_beta);
-							if (yi > approx_y)
+							if (yi > approx_y) {
 								--steps;
+							}
 							else if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
 									grisu_exact_correct_rounding::tie_to_even_tag ||
@@ -2114,8 +2232,9 @@ namespace jkj {
 									--steps;
 								}
 								else {
-									if (!is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k))
+									if (!is_product_integer<integer_check_case_id::other>(significand, exponent, minus_k)) {
 										--steps;
+									}
 								}
 							}
 						}
@@ -2128,8 +2247,9 @@ namespace jkj {
 						{
 							// We know already r is at most deltai
 							deltai -= std::uint32_t(r);
-							if (divisor > deltai)
+							if (divisor > deltai) {
 								steps = 0;
+							}
 							else if (divisor == deltai) {
 								switch (zf_vs_deltaf) {
 								case zf_vs_deltaf_t::zf_larger:
@@ -2173,8 +2293,8 @@ namespace jkj {
 			static std::uint32_t compute_delta([[maybe_unused]] bool is_edge_case,
 				cache_entry_type const& cache, int minus_beta) noexcept
 			{
-				static constexpr auto q_mp_m1 = extended_precision - precision - 1;
-				static constexpr auto intermediate_precision =
+				constexpr auto q_mp_m1 = extended_precision - precision - 1;
+				constexpr auto intermediate_precision =
 					sizeof(Float) == 4 ? cache_precision : extended_precision;
 				using intermediate_type = std::conditional_t<sizeof(Float) == 4,
 					cache_entry_type, extended_significand_type>;
@@ -2190,8 +2310,9 @@ namespace jkj {
 				// For nearest rounding
 				if constexpr (tag == grisu_exact_rounding_modes::to_nearest_tag)
 				{
-					if (is_edge_case)
+					if (is_edge_case) {
 						r = (r >> 1) + (r >> 2);
+					}
 
 					return std::uint32_t(r >> (intermediate_precision - q_mp_m1 + minus_beta));
 				}
@@ -2246,74 +2367,11 @@ namespace jkj {
 						return true;
 					}
 					// For k < 0
-					else if (exponent <= integer_check_exponent_upper_bound_for_p_p2) {
-						// For IEEE-754 binary32
-						if constexpr (sizeof(Float) == 4) {
-							// Fully table-based approach
-							assert(1 <= minus_k && minus_k <= 10);
-							switch (minus_k) {
-							case 1:
-								return f % power_of_5<1> == 0;
-							case 2:
-								return f % power_of_5<2> == 0;
-							case 3:
-								return f % power_of_5<3> == 0;
-							case 4:
-								return f % power_of_5<4> == 0;
-							case 5:
-								return f % power_of_5<5> == 0;
-							case 6:
-								return f % power_of_5<6> == 0;
-							case 7:
-								return f % power_of_5<7> == 0;
-							case 8:
-								return f % power_of_5<8> == 0;
-							case 9:
-								return f % power_of_5<9> == 0;
-							default:	// case 10:
-								return f % power_of_5<10> == 0;
-							}
-						}
-						// For IEEE-754 binary64
-						else {
-							// Cut into two parts and then appply the table-based approach
-							assert(1 <= minus_k && minus_k <= 23);
-							if (minus_k >= 12) {
-								if (f % power_of_5<12> == 0) {
-									f /= power_of_5<12>;
-									minus_k -= 12;
-								}
-								else
-									return false;
-							}
-							assert(0 <= minus_k && minus_k <= 11);
-							switch (minus_k) {
-							case 0:
-								return true;
-							case 1:
-								return f % power_of_5<1> == 0;
-							case 2:
-								return f % power_of_5<2> == 0;
-							case 3:
-								return f % power_of_5<3> == 0;
-							case 4:
-								return f % power_of_5<4> == 0;
-							case 5:
-								return f % power_of_5<5> == 0;
-							case 6:
-								return f % power_of_5<6> == 0;
-							case 7:
-								return f % power_of_5<7> == 0;
-							case 8:
-								return f % power_of_5<8> == 0;
-							case 9:
-								return f % power_of_5<9> == 0;
-							case 10:
-								return f % power_of_5<10> == 0;
-							default:	// case 11:
-								return f % power_of_5<11> == 0;
-							}
-						}
+					else if (exponent <= integer_check_exponent_upper_bound_for_p_p2)
+					{
+						assert((sizeof(Float) == 4 && 1 <= minus_k && minus_k <= 10) ||
+							(sizeof(Float) == 8 && 1 <= minus_k && minus_k <= 23));
+						return divisible_by_power_of_5(f, minus_k);
 					}
 					else {
 						return false;
@@ -2334,7 +2392,7 @@ namespace jkj {
 				}
 				// Case IV or V or VI: f = fc or fc +- 2^(q-p-1)
 				else {
-					static constexpr auto exp_2_upper_bound =
+					constexpr auto exp_2_upper_bound =
 						case_id == integer_check_case_id::two_times_fc ?
 						integer_check_exponent_lower_bound_for_q_mp :
 						integer_check_exponent_lower_bound_for_q_mp_m1;
@@ -2353,73 +2411,9 @@ namespace jkj {
 					}
 					// Exponent for 5 is positive
 					else if (exponent <= integer_check_exponent_upper_bound_for_p_p1) {
-						// For IEEE-754 binary32
-						if constexpr (sizeof(Float) == 4) {
-							// Fully table-based approach
-							assert(1 <= minus_k && minus_k <= 10);
-							switch (minus_k) {
-							case 1:
-								return f % power_of_5<1> == 0;
-							case 2:
-								return f % power_of_5<2> == 0;
-							case 3:
-								return f % power_of_5<3> == 0;
-							case 4:
-								return f % power_of_5<4> == 0;
-							case 5:
-								return f % power_of_5<5> == 0;
-							case 6:
-								return f % power_of_5<6> == 0;
-							case 7:
-								return f % power_of_5<7> == 0;
-							case 8:
-								return f % power_of_5<8> == 0;
-							case 9:
-								return f % power_of_5<9> == 0;
-							default:	// case 10:
-								return f % power_of_5<10> == 0;
-							}
-						}
-						// For IEEE-754 binary64
-						else {
-							// Cut into two parts and then appply the table-based approach
-							assert(1 <= minus_k && minus_k <= 22);
-							if (minus_k >= 11) {
-								if (f % power_of_5<11> == 0) {
-									f /= power_of_5<11>;
-									minus_k -= 11;
-								}
-								else
-									return false;
-							}
-							assert(0 <= minus_k && minus_k <= 11);
-							switch (minus_k) {
-							case 0:
-								return true;
-							case 1:
-								return f % power_of_5<1> == 0;
-							case 2:
-								return f % power_of_5<2> == 0;
-							case 3:
-								return f % power_of_5<3> == 0;
-							case 4:
-								return f % power_of_5<4> == 0;
-							case 5:
-								return f % power_of_5<5> == 0;
-							case 6:
-								return f % power_of_5<6> == 0;
-							case 7:
-								return f % power_of_5<7> == 0;
-							case 8:
-								return f % power_of_5<8> == 0;
-							case 9:
-								return f % power_of_5<9> == 0;
-							case 10:
-								return f % power_of_5<10> == 0;
-							default:	// case 11:
-								return f % power_of_5<11> == 0;
-							}
-						}
+						assert((sizeof(Float) == 4 && 1 <= minus_k && minus_k <= 10) ||
+							(sizeof(Float) == 8 && 1 <= minus_k && minus_k <= 22));
+						return divisible_by_power_of_5(f, minus_k);
 					}
 					else {
 						return false;
@@ -2427,7 +2421,7 @@ namespace jkj {
 				}
 			}
 
-			enum class zf_vs_deltaf_t {
+			enum class zf_vs_deltaf_t : std::uint8_t {
 				not_compared_yet = 0,
 				zf_larger = 1,
 				zf_smaller = 2
@@ -2552,8 +2546,9 @@ namespace jkj {
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
-				if (deltai < new_r)
+				if (deltai < new_r) {
 					return false;
+				}
 				else if (deltai == new_r) {
 					switch (zf_vs_deltaf) {
 					case zf_vs_deltaf_t::zf_larger:
@@ -2581,63 +2576,6 @@ namespace jkj {
 				r = new_r;
 				divisor *= power_of_10<lambda>;
 				return true;
-			};
-
-			// Perform binary search to find kappa downward
-			// Returns true if kappa - lambda is a possible candidate
-			template <extended_significand_type lambda,
-				grisu_exact_rounding_modes::tag_t tag,
-				bool is_signed, class IntervalType
-			>
-			static bool decreasing_search(
-				fp_t<Float, is_signed>& ret_value,
-				IntervalType& interval_type,
-				zf_vs_deltaf_t& zf_vs_deltaf,
-				int exponent, int minus_k, int minus_beta,
-				extended_significand_type fc,
-				extended_significand_type& r,
-				std::uint32_t& deltai,
-				std::uint32_t& epsiloni,
-				cache_entry_type const& cache) noexcept
-			{
-				// We already know r < 10^initial_kappa < 2^32
-				auto const quotient = std::uint32_t(r) / std::uint32_t(power_of_10<initial_kappa - lambda>);
-				auto const new_r = std::uint32_t(r) % std::uint32_t(power_of_10<initial_kappa - lambda>);
-
-				// Check if the remainder is still greater than or equal to the delta
-				// remainder should be strictly greater if the left boundary is contained
-
-				if (new_r < deltai)
-					return true;
-				else if (deltai == new_r) {
-					switch (zf_vs_deltaf) {
-					case zf_vs_deltaf_t::zf_smaller:
-						return true;
-
-					case zf_vs_deltaf_t::not_compared_yet:
-						if (is_zf_smaller_than_deltaf<tag>(fc,
-							minus_beta, cache, interval_type, exponent, minus_k))
-						{
-							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
-							return true;
-						}
-						zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-						break;
-
-					case zf_vs_deltaf_t::zf_larger:
-						// Do nothing; just to silence the warning
-						break;
-					}
-				}
-
-				// Decrease kappa by lambda
-				r = new_r * power_of_10<lambda>;
-				deltai *= std::uint32_t(power_of_10<lambda>);
-				epsiloni *= std::uint32_t(power_of_10<lambda>);
-				ret_value.significand *= power_of_10<lambda>;
-				ret_value.significand += quotient;
-				ret_value.exponent -= lambda;
-				return false;
 			}
 		};
 	}
