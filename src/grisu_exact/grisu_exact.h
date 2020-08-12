@@ -236,9 +236,8 @@ namespace jkj {
 			static constexpr auto size = N;
 			divisibility_test_table_entry<UInt> value[N];
 		};
-		template <class UInt>
+		template <class UInt, std::size_t size>
 		constexpr auto generate_divisibility_test_table() noexcept {
-			constexpr std::size_t size = std::is_same_v<UInt, std::uint32_t> ? 12 : 24;
 			using return_type = divisibility_test_table<UInt, size>;
 
 			return_type table{};
@@ -253,7 +252,8 @@ namespace jkj {
 		}
 		template <class UInt>
 		struct divisibility_test_table_holder {
-			static constexpr auto table = generate_divisibility_test_table<UInt>();
+			static constexpr auto table = generate_divisibility_test_table<UInt,
+				std::is_same_v<UInt, std::uint32_t> ? 12 : 24>();
 		};
 		template <class UInt>
 		constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {
@@ -1215,23 +1215,29 @@ namespace jkj {
 
 		//// Inspector methods
 
-		extended_significand_type extract_significand_bits() const noexcept {
+		Float as_ieee754() const noexcept {
+			Float x;
+			std::memcpy(&x, &f, sizeof(Float));
+			return x;
+		}
+
+		constexpr extended_significand_type extract_significand_bits() const noexcept {
 			constexpr auto significand_bits_mask =
 				(extended_significand_type(1) << precision) - 1;
 			return f & significand_bits_mask;
 		}
 
-		std::uint32_t extract_exponent_bits() const noexcept {
+		constexpr std::uint32_t extract_exponent_bits() const noexcept {
 			constexpr auto exponent_bits_mask =
 				(std::uint32_t(1) << exponent_bits) - 1;
 			return std::uint32_t(f >> precision) & exponent_bits_mask;
 		}
 
-		bool is_finite() const noexcept {
+		constexpr bool is_finite() const noexcept {
 			return (f & exponent_bits_mask) != exponent_bits_mask;
 		}
 
-		bool is_nonzero() const noexcept {
+		constexpr bool is_nonzero() const noexcept {
 			// vs (f & ~sign_bit_mask) != 0;
 			// It seems that there is no AND instruction for 64-bit immediate value in x86,
 			// thus (f & ~sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
@@ -1240,12 +1246,12 @@ namespace jkj {
 		}
 
 		// Allows positive and negative zeros
-		bool is_subnormal() const noexcept {
+		constexpr bool is_subnormal() const noexcept {
 			return (f & exponent_bits_mask) == 0;
 		}
 
 		// Allows negative zero and negative NaN's, but not allow positive zero
-		bool is_negative() const noexcept {
+		constexpr bool is_negative() const noexcept {
 			// vs (f & sign_bit_mask) != 0;
 			// It seems that there is no AND instruction for 64-bit immediate value in x86,
 			// thus (f & sign_bit_mask) != 0 generates 3 instructions (load, and, compare),
@@ -1254,28 +1260,28 @@ namespace jkj {
 		}
 
 		// Allows positive zero and positive NaN's, but not allow negative zero
-		bool is_positive() const noexcept {
+		constexpr bool is_positive() const noexcept {
 			// vs (f & sign_bit_mask) == 0;
 			// Ditto
 			return (f >> (extended_precision - 1)) == 0;
 		}
 
-		bool is_positive_infinity() const noexcept {
+		constexpr bool is_positive_infinity() const noexcept {
 			constexpr auto positive_infinity = exponent_bits_mask;
 			return f == positive_infinity;
 		}
 
-		bool is_negative_infinity() const noexcept {
+		constexpr bool is_negative_infinity() const noexcept {
 			constexpr auto negative_infinity = exponent_bits_mask | sign_bit_mask;
 			return f == negative_infinity;
 		}
 
 		// Allows both plus and minus infinities
-		bool is_infinity() const noexcept {
+		constexpr bool is_infinity() const noexcept {
 			return is_positive_infinity() || is_negative_infinity();
 		}
 
-		bool is_nan() const noexcept {
+		constexpr bool is_nan() const noexcept {
 			return !is_finite() && (extract_significand_bits() != 0);
 		}
 
@@ -1397,20 +1403,20 @@ namespace jkj {
 				static constexpr bool is_symmetric = true;
 				bool is_closed;
 
-				bool include_left_endpoint() const noexcept {
+				constexpr bool include_left_endpoint() const noexcept {
 					return is_closed;
 				}
-				bool include_right_endpoint() const noexcept {
+				constexpr bool include_right_endpoint() const noexcept {
 					return is_closed;
 				}
 			};
 			struct asymmetric_boundary {
 				static constexpr bool is_symmetric = false;
 				bool is_left_closed;
-				bool include_left_endpoint() const noexcept {
+				constexpr bool include_left_endpoint() const noexcept {
 					return is_left_closed;
 				}
-				bool include_right_endpoint() const noexcept {
+				constexpr bool include_right_endpoint() const noexcept {
 					return !is_left_closed;
 				}
 			};
@@ -1463,7 +1469,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.f % 2 == 0 };
 			}
 		};
@@ -1478,7 +1484,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::symmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.f % 2 != 0 };
 			}
 		};
@@ -1493,7 +1499,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ !br.is_negative() };
 			}
 		};
@@ -1508,7 +1514,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
+			constexpr interval_type::asymmetric_boundary operator()(bit_representation_t<Float> br) const noexcept {
 				return{ br.is_negative() };
 			}
 		};
@@ -1524,7 +1530,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
+			constexpr interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
@@ -1539,7 +1545,7 @@ namespace jkj {
 					br, *this);
 			}
 			template <class Float>
-			interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
+			constexpr interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 				return{};
 			}
 		};
@@ -1549,7 +1555,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::closed operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::closed operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1557,7 +1563,7 @@ namespace jkj {
 				static constexpr tag_t tag = to_nearest_tag;
 
 				template <class Float>
-				interval_type::open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1637,7 +1643,7 @@ namespace jkj {
 				static constexpr tag_t tag = left_closed_directed_tag;
 
 				template <class Float>
-				interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::left_closed_right_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1645,7 +1651,7 @@ namespace jkj {
 				static constexpr tag_t tag = right_closed_directed_tag;
 
 				template <class Float>
-				interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
+				constexpr interval_type::right_closed_left_open operator()(bit_representation_t<Float>) const noexcept {
 					return{};
 				}
 			};
@@ -1658,12 +1664,12 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 					
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 				}
 			}
 		};
@@ -1674,11 +1680,11 @@ namespace jkj {
 			{
 				if (br.is_negative()) {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::left_closed_directed{});
+						br, detail::right_closed_directed{});
 				}
 				else {
 					return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-						br, detail::right_closed_directed{});
+						br, detail::left_closed_directed{});
 				}
 			}
 		};
@@ -1688,7 +1694,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::right_closed_directed{});
+					br, detail::left_closed_directed{});
 			}
 		};
 		struct away_from_zero {
@@ -1697,7 +1703,7 @@ namespace jkj {
 				CorrectRoundingSearch&& crs) const
 			{
 				return std::forward<CorrectRoundingSearch>(crs).template delegate<return_sign>(
-					br, detail::left_closed_directed{});
+					br, detail::right_closed_directed{});
 			}
 		};
 	}
@@ -1827,11 +1833,6 @@ namespace jkj {
 				auto deltai = compute_delta<IntervalTypeProvider::tag>(
 					significand == sign_bit_mask && exponent != min_exponent, cache, minus_beta);
 
-				// These are needed for correct rounding search
-				auto epsiloni = compute_delta<grisu_exact_rounding_modes::left_closed_directed_tag>(
-					false, cache, minus_beta + 1);
-				[[maybe_unused]] auto approx_y = zi - epsiloni;
-
 
 				//////////////////////////////////////////////////////////////////////
 				// Step 2: Search for kappa
@@ -1841,9 +1842,9 @@ namespace jkj {
 				auto zf_vs_deltaf = zf_vs_deltaf_t::not_compared_yet;
 
 				// Compute s and r for initial kappa
+				extended_significand_type divisor;
 				ret_value.significand = zi / power_of_10<initial_kappa>;
 				auto r = zi % power_of_10<initial_kappa>;
-				auto divisor = power_of_10<initial_kappa>;
 
 				ret_value.exponent = initial_kappa + minus_k;
 
@@ -1882,12 +1883,9 @@ namespace jkj {
 					if (new_r < deltai) {
 						goto decrease_kappa_by_1_label;
 					}
-					else if (deltai == new_r) {
-						switch (zf_vs_deltaf) {
-						case zf_vs_deltaf_t::zf_smaller:
-							goto decrease_kappa_by_1_label;
-
-						case zf_vs_deltaf_t::not_compared_yet:
+					else if (new_r == deltai) {
+						// zf_vs_deltaf cannot be zf_smaller here
+						if (zf_vs_deltaf == zf_vs_deltaf_t::not_compared_yet) {
 							if (is_zf_smaller_than_deltaf<IntervalTypeProvider::tag>(significand,
 								minus_beta, cache, interval_type, exponent, minus_k))
 							{
@@ -1895,11 +1893,6 @@ namespace jkj {
 								goto decrease_kappa_by_1_label;
 							}
 							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-							break;
-
-						case zf_vs_deltaf_t::zf_larger:
-							// Do nothing; just to silence the warning
-							break;
 						}
 					}
 
@@ -1955,29 +1948,31 @@ namespace jkj {
 
 			increasing_search_label:
 				// Perform binary search
+				divisor = power_of_10<initial_kappa>;
+
 				if constexpr (sizeof(Float) == 4) {
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(max_kappa - initial_kappa < 8);
 
-					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<2, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<4, IntervalTypeProvider::tag, true>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<2, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<1, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
 				else {
 					// This procedure strictly depends on our specific choice of these parameters:
 					static_assert(max_kappa - initial_kappa < 16);
 
-					increasing_search<8, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<4, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<2, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
-					increasing_search<1, IntervalTypeProvider::tag>(ret_value, interval_type, zf_vs_deltaf,
-						exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<8, IntervalTypeProvider::tag, true>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<4, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<2, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
+					increasing_search<1, IntervalTypeProvider::tag, false>(ret_value, interval_type,
+						zf_vs_deltaf, exponent, minus_k, minus_beta, significand, r, divisor, deltai, cache);
 				}
 
 
@@ -2074,6 +2069,7 @@ namespace jkj {
 				{
 					// We already know r is at most deltai
 					deltai -= std::uint32_t(r);
+					auto const approx_x = zi - deltai;
 
 					auto const current_digit = ret_value.significand % 10;
 
@@ -2083,6 +2079,38 @@ namespace jkj {
 						auto const displacement = steps * divisor;
 						if (displacement > deltai) {
 							steps /= 2;
+						}
+						else if (displacement == deltai) {
+							// Compare fractional parts
+							// If zf <= deltaf, we can move to the left
+							// Otherwise, we should back off by 1
+							// The function is_zf_smaller_than_deltaf relies on
+							// several assumptions that are not true here.
+							// Hence, we need to do the comparison more carefully,
+							// by comparing the parity of approx_x and xi.
+							// x = (zi - deltai) + (zf - deltaf)
+							switch (zf_vs_deltaf) {
+							case zf_vs_deltaf_t::not_compared_yet:
+								// zf >= deltaf ?
+								if ((compute_mul(significand, cache, minus_beta) & 1) == (approx_x & 1))
+								{
+									// zf > deltaf ?
+									if (!equal_fractional_parts<IntervalTypeProvider::tag>(
+										significand, exponent, minus_k))
+									{
+										--steps;
+									}
+								}
+								break;
+
+							case zf_vs_deltaf_t::zf_larger:
+								--steps;
+								break;
+
+							case zf_vs_deltaf_t::zf_smaller:
+								break;
+							}
+							goto return_label;
 						}
 						else {
 							ret_value.significand -= steps;
@@ -2106,9 +2134,13 @@ namespace jkj {
 					// -1: 51.9%   0: 31.9%   1: 10.2%   2:  4.5% 
 					//  3:  1.4%   4:  0.1%   5:  0.0%
 					auto const displacement = (divisor / 2) + r;
+					auto epsiloni = compute_delta<grisu_exact_rounding_modes::left_closed_directed_tag>(
+						false, cache, minus_beta + 1);
 
 					// n' + 1 >= 1?
 					if (displacement <= epsiloni) {
+						auto const approx_y = zi - epsiloni;
+
 						std::uint8_t steps;
 						epsiloni -= std::uint32_t(displacement);
 
@@ -2174,7 +2206,7 @@ namespace jkj {
 
 						// Check fractional if necessary
 						if (epsiloni == 0) {
-							auto yi = compute_mul(significand, cache, minus_beta);
+							auto const yi = compute_mul(significand, cache, minus_beta);
 							// We have either yi == approx_y or yi == approx_y - 1
 							if (yi == approx_y) {
 								if constexpr (CorrectRoundingSearch::tag ==
@@ -2193,11 +2225,13 @@ namespace jkj {
 										if constexpr (CorrectRoundingSearch::tag ==
 											grisu_exact_correct_rounding::tie_to_even_tag)
 										{
-											steps = (ret_value.significand - steps) % 2 == 1 ? steps - 1 : steps;
+											steps = (ret_value.significand & 1) != extended_significand_type(steps & 1)
+												? steps - 1 : steps;
 										}
 										else
 										{
-											steps = (ret_value.significand - steps) % 2 == 0 ? steps - 1 : steps;
+											steps = (ret_value.significand & 1) == extended_significand_type(steps & 1)
+												? steps - 1 : steps;
 										}
 									}
 									else {
@@ -2524,7 +2558,7 @@ namespace jkj {
 			// Returns true if kappa + lambda is a possible candidate
 			template <extended_significand_type lambda,
 				grisu_exact_rounding_modes::tag_t tag,
-				bool is_signed, class IntervalType
+				bool is_initial_search, bool is_signed, class IntervalType
 			>
 			static bool increasing_search(
 				fp_t<Float, is_signed>& ret_value,
@@ -2542,27 +2576,41 @@ namespace jkj {
 
 				// Check if delta is still greater than or equal to the remainder
 				// delta should be strictly greater if the left boundary is not contained
-				if (deltai < new_r) {
+				if (new_r > deltai) {
 					return false;
 				}
-				else if (deltai == new_r) {
-					switch (zf_vs_deltaf) {
-					case zf_vs_deltaf_t::zf_larger:
-						return false;
-
-					case zf_vs_deltaf_t::not_compared_yet:
-						if (!is_zf_smaller_than_deltaf<tag>(fc,
-							minus_beta, cache, interval_type, exponent, minus_k))
-						{
-							zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
-							return false;
+				else if (new_r == deltai) {
+					if constexpr (is_initial_search) {
+						// zf_vs_deltaf cannot be zf_larger here
+						if (zf_vs_deltaf == zf_vs_deltaf_t::not_compared_yet) {
+							if (!is_zf_smaller_than_deltaf<tag>(fc,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+								return false;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
 						}
-						zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
-						break;
+					}
+					else {
+						switch (zf_vs_deltaf) {
+						case zf_vs_deltaf_t::not_compared_yet:
+							if (!is_zf_smaller_than_deltaf<tag>(fc,
+								minus_beta, cache, interval_type, exponent, minus_k))
+							{
+								zf_vs_deltaf = zf_vs_deltaf_t::zf_larger;
+								return false;
+							}
+							zf_vs_deltaf = zf_vs_deltaf_t::zf_smaller;
+							break;
 
-					case zf_vs_deltaf_t::zf_smaller:
-						// Do nothing; just to silence the warning
-						break;
+						case zf_vs_deltaf_t::zf_larger:
+							return false;
+
+						case zf_vs_deltaf_t::zf_smaller:
+							// Do nothing; just to silence the warning
+							break;
+						}
 					}
 				}
 
