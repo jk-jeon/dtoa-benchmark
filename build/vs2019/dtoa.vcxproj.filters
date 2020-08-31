@@ -37,6 +37,9 @@
     <Filter Include="ryu">
       <UniqueIdentifier>{ccc1fce5-9d54-4b48-a142-8523f8f06e0f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="dragonbox">
+      <UniqueIdentifier>{aaf82729-4d25-4a4c-b9a0-008a856e2da6}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h">
@@ -225,6 +228,9 @@
     <ClInclude Include="..\..\src\fmt\compile.h">
       <Filter>fmt</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\dragonbox\dragonbox.h">
+      <Filter>dragonbox</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
@@ -290,5 +296,6 @@
     <ClCompile Include="..\..\src\ryu\f2s.c">
       <Filter>ryu</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\dragonbox.cpp" />
   </ItemGroup>
 </Project>

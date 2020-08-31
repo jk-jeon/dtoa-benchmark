@@ -116,6 +116,7 @@
     <ClInclude Include="..\..\src\double-conversion\string-to-double.h" />
     <ClInclude Include="..\..\src\double-conversion\strtod.h" />
     <ClInclude Include="..\..\src\double-conversion\utils.h" />
+    <ClInclude Include="..\..\src\dragonbox\dragonbox.h" />
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h" />
     <ClInclude Include="..\..\src\floaxie\atof.h" />
     <ClInclude Include="..\..\src\floaxie\bit_ops.h" />
@@ -197,6 +198,7 @@
     <ClCompile Include="..\..\src\doubleconvtest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\src\dragonbox.cpp" />
     <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc" />
     <ClCompile Include="..\..\src\emygtest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
