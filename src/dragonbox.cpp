@@ -1,6 +1,17 @@
 ﻿#include "test.h"
 #include "dragonbox/dragonbox.h"
 
+#if defined(__GNUC__) || defined(__clang__)
+#define JKJ_SAFEBUFFERS
+#define JKJ_FORCEINLINE __attribute__((always_inline))
+#elif defined(_MSC_VER)
+#define JKJ_SAFEBUFFERS __declspec(safebuffers)
+#define JKJ_FORCEINLINE __forceinline
+#else
+#define JKJ_SAFEBUFFERS
+#define JKJ_FORCEINLINE inline
+#endif
+
 // The printing routine here is brought from Ryu
 
 namespace {
@@ -27,7 +38,7 @@ namespace {
 		'9', '5', '9', '6', '9', '7', '9', '8', '9', '9'
 	};
 
-	constexpr std::uint32_t decimal_length(std::uint64_t const v) {
+	JKJ_FORCEINLINE constexpr std::uint32_t decimal_length(std::uint64_t const v) {
 		// This is slightly faster than a loop.
 		// The average output length is 16.38 digits, so we check high-to-low.
 		// Function precondition: v is not an 18, 19, or 20-digit number.
@@ -53,17 +64,15 @@ namespace {
 	}
 };
 
-void dtoa_dragonbox(double x, char* buffer)
+template <class CachePolicy>
+JKJ_SAFEBUFFERS static void dtoa_dragonbox_impl(double x, char* buffer, CachePolicy cp)
 {
 	// Step 5: Print the decimal representation.
 	int index = 0;
-	bool is_negative;
-	auto v = jkj::dragonbox::to_decimal<false>(x,
-		jkj::dragonbox::rounding_modes::nearest_to_even{},
-		jkj::dragonbox::correct_rounding::tie_to_even{},
-		[&is_negative](auto br) {
-			is_negative = br.is_negative();
-		});
+	jkj::dragonbox::ieee754_bits<double> bits{ x };
+	bool is_negative = bits.is_negative();
+	auto v = jkj::dragonbox::to_decimal(x, cp,
+		jkj::dragonbox::policy::sign::ignore);
 
 	if (is_negative) {
 		buffer[index++] = '-';
@@ -167,4 +176,15 @@ void dtoa_dragonbox(double x, char* buffer)
 	buffer[index] = '\0';
 }
 
+void dtoa_dragonbox(double x, char* buffer)
+{
+	dtoa_dragonbox_impl(x, buffer, jkj::dragonbox::policy::cache::normal);
+}
+
+void dtoa_dragonbox_comp(double x, char* buffer)
+{
+	dtoa_dragonbox_impl(x, buffer, jkj::dragonbox::policy::cache::compressed);
+}
+
 REGISTER_TEST(dragonbox);
+REGISTER_TEST(dragonbox_comp);
