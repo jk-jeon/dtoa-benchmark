@@ -18,7 +18,7 @@
 #include <vector>
 
 // The fmt library version in the form major * 10000 + minor * 100 + patch.
-#define FMT_VERSION 70001
+#define FMT_VERSION 70003
 
 #ifdef __clang__
 #  define FMT_CLANG_VERSION (__clang_major__ * 100 + __clang_minor__)
@@ -57,6 +57,7 @@
 #  define FMT_MSC_VER 0
 #  define FMT_SUPPRESS_MSC_WARNING(n)
 #endif
+
 #ifdef __has_feature
 #  define FMT_HAS_FEATURE(x) __has_feature(x)
 #else
@@ -64,7 +65,7 @@
 #endif
 
 #if defined(__has_include) && !defined(__INTELLISENSE__) && \
-    !(FMT_ICC_VERSION && FMT_ICC_VERSION < 1600)
+    (!FMT_ICC_VERSION || FMT_ICC_VERSION >= 1600)
 #  define FMT_HAS_INCLUDE(x) __has_include(x)
 #else
 #  define FMT_HAS_INCLUDE(x) 0
@@ -99,7 +100,7 @@
 #endif
 
 #ifndef FMT_OVERRIDE
-#  if FMT_HAS_FEATURE(cxx_override) || \
+#  if FMT_HAS_FEATURE(cxx_override_control) || \
       (FMT_GCC_VERSION >= 408 && FMT_HAS_GXX_CXX11) || FMT_MSC_VER >= 1900
 #    define FMT_OVERRIDE override
 #  else
@@ -152,7 +153,7 @@
 #  if FMT_HAS_CPP14_ATTRIBUTE(deprecated) || FMT_MSC_VER >= 1900
 #    define FMT_DEPRECATED [[deprecated]]
 #  else
-#    if defined(__GNUC__) || defined(__clang__)
+#    if (defined(__GNUC__) && !defined(__LCC__)) || defined(__clang__)
 #      define FMT_DEPRECATED __attribute__((deprecated))
 #    elif FMT_MSC_VER
 #      define FMT_DEPRECATED __declspec(deprecated)
@@ -269,8 +270,7 @@ struct monostate {};
 
 namespace detail {
 
-// A helper function to suppress bogus "conditional expression is constant"
-// warnings.
+// A helper function to suppress "conditional expression is constant" warnings.
 template <typename T> constexpr T const_check(T value) { return value; }
 
 FMT_NORETURN FMT_API void assert_fail(const char* file, int line,
@@ -299,7 +299,8 @@ template <typename T> struct std_string_view {};
 
 #ifdef FMT_USE_INT128
 // Do nothing.
-#elif defined(__SIZEOF_INT128__) && !FMT_NVCC
+#elif defined(__SIZEOF_INT128__) && !FMT_NVCC && \
+    !(FMT_CLANG_VERSION && FMT_MSC_VER)
 #  define FMT_USE_INT128 1
 using int128_t = __int128_t;
 using uint128_t = __uint128_t;
@@ -557,8 +558,9 @@ class basic_format_parse_context : private ErrorHandler {
   using iterator = typename basic_string_view<Char>::iterator;
 
   explicit constexpr basic_format_parse_context(
-      basic_string_view<Char> format_str, ErrorHandler eh = {})
-      : ErrorHandler(eh), format_str_(format_str), next_arg_id_(0) {}
+      basic_string_view<Char> format_str, ErrorHandler eh = {},
+      int next_arg_id = 0)
+      : ErrorHandler(eh), format_str_(format_str), next_arg_id_(next_arg_id) {}
 
   /**
     Returns an iterator to the beginning of the format string range being
@@ -736,38 +738,61 @@ template <typename T> class buffer {
   }
 };
 
-// A buffer that writes to an output iterator when flushed.
-template <typename OutputIt, typename T>
-class iterator_buffer : public buffer<T> {
- private:
-  enum { buffer_size = 256 };
+struct buffer_traits {
+  explicit buffer_traits(size_t) {}
+  size_t count() const { return 0; }
+  size_t limit(size_t size) { return size; }
+};
 
+class fixed_buffer_traits {
+ private:
+  size_t count_ = 0;
+  size_t limit_;
+
+ public:
+  explicit fixed_buffer_traits(size_t limit) : limit_(limit) {}
+  size_t count() const { return count_; }
+  size_t limit(size_t size) {
+    size_t n = limit_ - count_;
+    count_ += size;
+    return size < n ? size : n;
+  }
+};
+
+// A buffer that writes to an output iterator when flushed.
+template <typename OutputIt, typename T, typename Traits = buffer_traits>
+class iterator_buffer : public Traits, public buffer<T> {
+ private:
   OutputIt out_;
+  enum { buffer_size = 256 };
   T data_[buffer_size];
 
  protected:
-  void grow(size_t) final {
+  void grow(size_t) final FMT_OVERRIDE {
     if (this->size() == buffer_size) flush();
   }
   void flush();
 
  public:
-  explicit iterator_buffer(OutputIt out)
-      : buffer<T>(data_, 0, buffer_size), out_(out) {}
+  explicit iterator_buffer(OutputIt out, size_t n = buffer_size)
+      : Traits(n),
+        buffer<T>(data_, 0, n < size_t(buffer_size) ? n : size_t(buffer_size)),
+        out_(out) {}
   ~iterator_buffer() { flush(); }
 
   OutputIt out() {
     flush();
     return out_;
   }
+  size_t count() const { return Traits::count() + this->size(); }
 };
 
 template <typename T> class iterator_buffer<T*, T> : public buffer<T> {
  protected:
-  void grow(size_t) final {}
+  void grow(size_t) final FMT_OVERRIDE {}
 
  public:
-  explicit iterator_buffer(T* out) : buffer<T>(out, 0, ~size_t()) {}
+  explicit iterator_buffer(T* out, size_t = 0) : buffer<T>(out, 0, ~size_t()) {}
 
   T* out() { return &*this->end(); }
 };
@@ -782,7 +807,7 @@ class iterator_buffer<std::back_insert_iterator<Container>,
   Container& container_;
 
  protected:
-  void grow(size_t capacity) FMT_OVERRIDE {
+  void grow(size_t capacity) final FMT_OVERRIDE {
     container_.resize(capacity);
     this->set(&container_[0], capacity);
   }
@@ -790,26 +815,53 @@ class iterator_buffer<std::back_insert_iterator<Container>,
  public:
   explicit iterator_buffer(Container& c)
       : buffer<typename Container::value_type>(c.size()), container_(c) {}
-  explicit iterator_buffer(std::back_insert_iterator<Container> out)
+  explicit iterator_buffer(std::back_insert_iterator<Container> out, size_t = 0)
       : iterator_buffer(get_container(out)) {}
   std::back_insert_iterator<Container> out() {
     return std::back_inserter(container_);
   }
 };
 
-template <typename Container>
-using container_buffer = iterator_buffer<std::back_insert_iterator<Container>,
-                                         typename Container::value_type>;
+// A buffer that counts the number of code units written discarding the output.
+template <typename T = char> class counting_buffer : public buffer<T> {
+ private:
+  enum { buffer_size = 256 };
+  T data_[buffer_size];
+  size_t count_ = 0;
+
+ protected:
+  void grow(size_t) final FMT_OVERRIDE {
+    if (this->size() != buffer_size) return;
+    count_ += this->size();
+    this->clear();
+  }
+
+ public:
+  counting_buffer() : buffer<T>(data_, 0, buffer_size) {}
+
+  size_t count() { return count_ + this->size(); }
+};
 
 // An output iterator that appends to the buffer.
 // It is used to reduce symbol sizes for the common case.
 template <typename T>
 class buffer_appender : public std::back_insert_iterator<buffer<T>> {
+  using base = std::back_insert_iterator<buffer<T>>;
+
  public:
-  explicit buffer_appender(buffer<T>& buf)
-      : std::back_insert_iterator<buffer<T>>(buf) {}
-  buffer_appender(std::back_insert_iterator<buffer<T>> it)
-      : std::back_insert_iterator<buffer<T>>(it) {}
+  explicit buffer_appender(buffer<T>& buf) : base(buf) {}
+  buffer_appender(base it) : base(it) {}
+
+  buffer_appender& operator++() {
+    base::operator++();
+    return *this;
+  }
+
+  buffer_appender operator++(int) {
+    buffer_appender tmp = *this;
+    ++*this;
+    return tmp;
+  }
 };
 
 // Maps an output iterator into a buffer.
@@ -1555,7 +1607,7 @@ class format_arg_store
 
 /**
   \rst
-  Constructs an `~fmt::format_arg_store` object that contains references to
+  Constructs a `~fmt::format_arg_store` object that contains references to
   arguments and can be implicitly converted to `~fmt::format_args`. `Context`
   can be omitted in which case it defaults to `~fmt::context`.
   See `~fmt::arg` for lifetime considerations.
@@ -1567,11 +1619,18 @@ inline format_arg_store<Context, Args...> make_format_args(
   return {args...};
 }
 
-/** Same as `make_format_args` but with compile-time format string checks. */
+/**
+  \rst
+  Constructs a `~fmt::format_arg_store` object that contains references
+  to arguments and can be implicitly converted to `~fmt::format_args`.
+  If ``format_str`` is a compile-time string then `make_args_checked` checks
+  its validity at compile time.
+  \endrst
+ */
 template <typename... Args, typename S, typename Char = char_t<S>>
-inline format_arg_store<buffer_context<Char>, remove_reference_t<Args>...>
-make_args_checked(const S& format_str,
-                  const remove_reference_t<Args>&... args) {
+inline auto make_args_checked(const S& format_str,
+                              const remove_reference_t<Args>&... args)
+    -> format_arg_store<buffer_context<Char>, remove_reference_t<Args>...> {
   static_assert(
       detail::count<(
               std::is_base_of<detail::view, remove_reference_t<Args>>::value &&
@@ -1868,7 +1927,7 @@ template <typename Context> class basic_format_args {
   }
 
   template <typename Char> int get_id(basic_string_view<Char> name) const {
-    if (!has_named_args()) return {};
+    if (!has_named_args()) return -1;
     const auto& named_args =
         (is_packed() ? values_[-1] : args_[-1].value_).named_args;
     for (size_t i = 0; i < named_args.size; ++i) {
@@ -1948,6 +2007,53 @@ template <typename OutputIt, typename S, typename... Args,
 inline OutputIt format_to(OutputIt out, const S& format_str, Args&&... args) {
   const auto& vargs = fmt::make_args_checked<Args...>(format_str, args...);
   return vformat_to(out, to_string_view(format_str), vargs);
+}
+
+template <typename OutputIt> struct format_to_n_result {
+  /** Iterator past the end of the output range. */
+  OutputIt out;
+  /** Total (not truncated) output size. */
+  size_t size;
+};
+
+template <typename OutputIt, typename Char, typename... Args,
+          FMT_ENABLE_IF(detail::is_output_iterator<OutputIt>::value)>
+inline format_to_n_result<OutputIt> vformat_to_n(
+    OutputIt out, size_t n, basic_string_view<Char> format_str,
+    basic_format_args<buffer_context<type_identity_t<Char>>> args) {
+  detail::iterator_buffer<OutputIt, Char, detail::fixed_buffer_traits> buf(out,
+                                                                           n);
+  detail::vformat_to(buf, format_str, args);
+  return {buf.out(), buf.count()};
+}
+
+/**
+ \rst
+ Formats arguments, writes up to ``n`` characters of the result to the output
+ iterator ``out`` and returns the total output size and the iterator past the
+ end of the output range.
+ \endrst
+ */
+template <typename OutputIt, typename S, typename... Args,
+          FMT_ENABLE_IF(detail::is_string<S>::value&&
+                            detail::is_output_iterator<OutputIt>::value)>
+inline format_to_n_result<OutputIt> format_to_n(OutputIt out, size_t n,
+                                                const S& format_str,
+                                                const Args&... args) {
+  const auto& vargs = fmt::make_args_checked<Args...>(format_str, args...);
+  return vformat_to_n(out, n, to_string_view(format_str), vargs);
+}
+
+/**
+  Returns the number of characters in the output of
+  ``format(format_str, args...)``.
+ */
+template <typename... Args>
+inline size_t formatted_size(string_view format_str, Args&&... args) {
+  const auto& vargs = fmt::make_args_checked<Args...>(format_str, args...);
+  detail::counting_buffer<> buf;
+  detail::vformat_to(buf, format_str, vargs);
+  return buf.count();
 }
 
 template <typename S, typename Char = char_t<S>>
