@@ -46,6 +46,9 @@
     <Filter Include="fmt_dragonbox_comp">
       <UniqueIdentifier>{95fdd140-eda6-4727-a666-feb1dabb147e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="erthink">
+      <UniqueIdentifier>{91921a25-cb88-4129-a713-6e330deecffd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h">
@@ -261,6 +264,66 @@
     <ClInclude Include="..\..\src\fmt_dragonbox_comp\format-inl.h">
       <Filter>fmt_dragonbox_comp</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_u2a.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_arch.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_bswap.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_byteorder.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_carryadd.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_casting.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_clz.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_d2a.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_defs.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_dynamic_constexpr.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_endian.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_ifunc.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_intrin.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_misc.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_mul.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_optimize4size.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_optimize4speed.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_rot.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\erthink\erthink_short_alloc.h">
+      <Filter>erthink</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
@@ -329,5 +392,6 @@
     <ClCompile Include="..\..\src\dragonbox.cpp" />
     <ClCompile Include="..\..\src\fmt_dragonboxtest.cpp" />
     <ClCompile Include="..\..\src\fmt_dragonbox_comptest.cpp" />
+    <ClCompile Include="..\..\src\erthink_test.cpp" />
   </ItemGroup>
 </Project>
