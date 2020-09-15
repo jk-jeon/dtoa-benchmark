@@ -143,6 +143,14 @@
     <ClInclude Include="..\..\src\fmt\core.h" />
     <ClInclude Include="..\..\src\fmt\format-inl.h" />
     <ClInclude Include="..\..\src\fmt\format.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox\compile.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox\core.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox\format-inl.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox\format.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\compile.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\core.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\format-inl.h" />
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\format.h" />
     <ClInclude Include="..\..\src\fpconv\fpconv.h" />
     <ClInclude Include="..\..\src\fpconv\powers.h" />
     <ClInclude Include="..\..\src\grisu\diy_fp.h" />
@@ -209,9 +217,12 @@
     <ClCompile Include="..\..\src\fmttest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="..\..\src\fmt_dragonboxtest.cpp" />
+    <ClCompile Include="..\..\src\fmt_dragonbox_comptest.cpp" />
     <ClCompile Include="..\..\src\fpconv\fpconv.c" />
     <ClCompile Include="..\..\src\fpconvtest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\gay\dtoa.c" />
     <ClCompile Include="..\..\src\gay\g_fmt.c" />
@@ -222,7 +233,10 @@
     <ClCompile Include="..\..\src\grisu2btest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\grisu_exact.cpp" />
+    <ClCompile Include="..\..\src\grisu_exact.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\jkjgrisu.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -234,7 +248,8 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\null.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|Win32'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\ostringstream.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>

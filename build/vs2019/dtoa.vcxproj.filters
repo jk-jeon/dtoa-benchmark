@@ -40,6 +40,12 @@
     <Filter Include="dragonbox">
       <UniqueIdentifier>{aaf82729-4d25-4a4c-b9a0-008a856e2da6}</UniqueIdentifier>
     </Filter>
+    <Filter Include="fmt_dragonbox">
+      <UniqueIdentifier>{f0e91776-29f5-4f40-b599-092293706bff}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fmt_dragonbox_comp">
+      <UniqueIdentifier>{95fdd140-eda6-4727-a666-feb1dabb147e}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h">
@@ -231,6 +237,30 @@
     <ClInclude Include="..\..\src\dragonbox\dragonbox.h">
       <Filter>dragonbox</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox\compile.h">
+      <Filter>fmt_dragonbox</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox\core.h">
+      <Filter>fmt_dragonbox</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox\format.h">
+      <Filter>fmt_dragonbox</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox\format-inl.h">
+      <Filter>fmt_dragonbox</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\compile.h">
+      <Filter>fmt_dragonbox_comp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\core.h">
+      <Filter>fmt_dragonbox_comp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\format.h">
+      <Filter>fmt_dragonbox_comp</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\fmt_dragonbox_comp\format-inl.h">
+      <Filter>fmt_dragonbox_comp</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />
@@ -297,5 +327,7 @@
       <Filter>ryu</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\dragonbox.cpp" />
+    <ClCompile Include="..\..\src\fmt_dragonboxtest.cpp" />
+    <ClCompile Include="..\..\src\fmt_dragonbox_comptest.cpp" />
   </ItemGroup>
 </Project>
