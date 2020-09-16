@@ -1,14 +1,22 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30503.244
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "dtoa", "dtoa.vcxproj", "{8DE1957C-7918-970D-2205-7D100E1B130F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		release_clang|Win32 = release_clang|Win32
+		release_clang|x64 = release_clang|x64
 		release|Win32 = release|Win32
 		release|x64 = release|x64
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8DE1957C-7918-970D-2205-7D100E1B130F}.release_clang|Win32.ActiveCfg = release_clang|Win32
+		{8DE1957C-7918-970D-2205-7D100E1B130F}.release_clang|Win32.Build.0 = release_clang|Win32
+		{8DE1957C-7918-970D-2205-7D100E1B130F}.release_clang|x64.ActiveCfg = release_clang|x64
+		{8DE1957C-7918-970D-2205-7D100E1B130F}.release_clang|x64.Build.0 = release_clang|x64
 		{8DE1957C-7918-970D-2205-7D100E1B130F}.release|Win32.ActiveCfg = release|Win32
 		{8DE1957C-7918-970D-2205-7D100E1B130F}.release|Win32.Build.0 = release|Win32
 		{8DE1957C-7918-970D-2205-7D100E1B130F}.release|x64.ActiveCfg = release|x64
@@ -16,5 +24,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7F45698C-2AE0-46D7-B7D5-AC6147178814}
 	EndGlobalSection
 EndGlobal
