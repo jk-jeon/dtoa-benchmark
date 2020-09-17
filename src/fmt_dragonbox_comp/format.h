@@ -180,12 +180,6 @@ FMT_END_NAMESPACE
 #if (FMT_GCC_VERSION || FMT_HAS_BUILTIN(__builtin_clzll)) && !FMT_MSC_VER
 #  define FMT_BUILTIN_CLZLL(n) __builtin_clzll(n)
 #endif
-#if (FMT_GCC_VERSION || FMT_HAS_BUILTIN(__builtin_ctz)) && !FMT_MSC_VER
-#  define FMT_BUILTIN_CTZ(n) __builtin_ctz(n)
-#endif
-#if (FMT_GCC_VERSION || FMT_HAS_BUILTIN(__builtin_ctzll)) && !FMT_MSC_VER
-#  define FMT_BUILTIN_CTZLL(n) __builtin_ctzll(n)
-#endif
 
 // Some compilers masquerade as both MSVC and GCC-likes or otherwise support
 // __builtin_clz and __builtin_clzll, so only define FMT_BUILTIN_CLZ using the
@@ -236,59 +230,6 @@ inline uint32_t clzll(uint64_t x) {
   return 63 - r;
 }
 #  define FMT_BUILTIN_CLZLL(n) detail::clzll(n)
-}  // namespace detail
-FMT_END_NAMESPACE
-#endif
-
-#if FMT_MSC_VER && !defined(FMT_BUILTIN_CTZLL) && !defined(_MANAGED)
-#  include <intrin.h>  // _BitScanForward, _BitScanForward64
-
-FMT_BEGIN_NAMESPACE
-namespace detail {
-// Avoid Clang with Microsoft CodeGen's -Wunknown-pragmas warning.
-#  ifndef __clang__
-#    pragma intrinsic(_BitScanForward)
-#  endif
-inline uint32_t ctz(uint32_t x) {
-  unsigned long r = 0;
-  _BitScanForward(&r, x);
-
-  FMT_ASSERT(x != 0, "");
-  // Static analysis complains about using uninitialized data
-  // "r", but the only way that can happen is if "x" is 0,
-  // which the callers guarantee to not happen.
-  FMT_SUPPRESS_MSC_WARNING(6102)
-  return r;
-}
-#  define FMT_BUILTIN_CTZ(n) detail::ctz(n)
-
-#  if defined(_WIN64) && !defined(__clang__)
-#    pragma intrinsic(_BitScanForward64)
-#  endif
-
-inline uint32_t ctzll(uint64_t x) {
-  unsigned long r = 0;
-
-  FMT_ASSERT(x != 0, "");
-  // Static analysis complains about using uninitialized data
-  // "r", but the only way that can happen is if "x" is 0,
-  // which the callers guarantee to not happen.
-  FMT_SUPPRESS_MSC_WARNING(6102)
-
-#  ifdef _WIN64
-  _BitScanForward64(&r, x);
-#  else
-  // Scan the low 32 bits.
-  if (_BitScanForward(&r, static_cast<uint32_t>(x))) return r;
-
-  // Scan the high 32 bits.
-  _BitScanForward(&r, static_cast<uint32_t>(x >> 32));
-  r += 32;
-#  endif
-
-  return r;
-}
-#  define FMT_BUILTIN_CTZLL(n) detail::ctzll(n)
 }  // namespace detail
 FMT_END_NAMESPACE
 #endif

@@ -8,6 +8,11 @@
 #ifndef FMT_FORMAT_INL_H_
 #define FMT_FORMAT_INL_H_
 
+
+//////////////////////////////////////////////////
+#include "dragonbox/dragonbox.h"
+//////////////////////////////////////////////////
+
 #include <cassert>
 #include <cctype>
 #include <climits>
@@ -40,10 +45,12 @@
 #  pragma warning(disable : 4702)  // unreachable code
 #endif
 
+//////////////////////////////////////////////////
 // Dummy implementations of strerror_r and strerror_s called if corresponding
 // system functions are not available.
 inline testdragonboxcomp::fmt::detail::null<> strerror_r(int, char*, ...) { return {}; }
 inline testdragonboxcomp::fmt::detail::null<> strerror_s(char*, size_t, ...) { return {}; }
+//////////////////////////////////////////////////
 
 FMT_BEGIN_NAMESPACE
 namespace detail {
@@ -1134,6 +1141,7 @@ int format_float(T value, int precision, float_specs specs, buffer<char>& buf) {
   const int min_exp = -60;  // alpha in Grisu.
   int cached_exp10 = 0;     // K in Grisu.
   if (precision < 0) {
+#if 0
     fp fp_value;
     auto boundaries = specs.binary32
                           ? fp_value.assign_float_with_boundaries(value)
@@ -1162,6 +1170,57 @@ int format_float(T value, int precision, float_specs specs, buffer<char>& buf) {
       return exp;
     }
     buf.try_resize(to_unsigned(handler.size));
+#else
+    auto dec = jkj::dragonbox::to_decimal(value,
+      jkj::dragonbox::policy::sign::ignore,
+      jkj::dragonbox::policy::cache::compressed);
+    int length = detail::count_digits(dec.significand);
+    buf.try_resize(to_unsigned(length));
+    uint32_t dec_significand;
+    int i = 0;
+    if (dec.significand >= 100000000) {
+      dec_significand = uint32_t(dec.significand / 100000000);
+      uint32_t r = uint32_t(dec.significand) - 100000000 * dec_significand;
+      uint32_t r1 = r / 10000;
+      uint32_t r2 = r % 10000;
+      uint32_t a = r1 / 100;
+      uint32_t b = r1 % 100;
+      uint32_t c = r2 / 100;
+      uint32_t d = r2 % 100;
+      
+      copy2(buf.data() + length - 8, data::digits[a]);
+      copy2(buf.data() + length - 6, data::digits[b]);
+      copy2(buf.data() + length - 4, data::digits[c]);
+      copy2(buf.data() + length - 2, data::digits[d]);
+      i += 8;
+    }
+    else {
+      dec_significand = uint32_t(dec.significand);
+    }
+    while (dec_significand >= 10000) {
+        uint32_t r = dec_significand % 10000;
+        dec_significand /= 10000;
+
+        copy2(buf.data() + length - i - 4, data::digits[r / 100]);
+        copy2(buf.data() + length - i - 2, data::digits[r % 100]);
+        i += 4;
+    }
+    if (dec_significand >= 100) {
+        uint32_t r = dec_significand % 100;
+        dec_significand /= 100;
+
+        copy2(buf.data() + length - i - 2, data::digits[r]);
+        i += 2;
+    }
+    if (dec_significand >= 10) {
+        copy2(buf.data() + length - i - 2, data::digits[dec_significand]);
+    }
+    else {
+        *buf.data() = char('0' + dec_significand);
+    }
+    
+    return dec.exponent;
+#endif
   } else {
     fp normalized = normalize(fp(value));
     const auto cached_pow = get_cached_power(

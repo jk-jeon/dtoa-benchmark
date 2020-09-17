@@ -178,6 +178,7 @@
 #  endif
 #endif
 
+//////////////////////////////////////////////////
 #ifndef FMT_BEGIN_NAMESPACE
 #  if FMT_HAS_FEATURE(cxx_inline_namespaces) || FMT_GCC_VERSION >= 404 || \
       FMT_MSC_VER >= 1900
@@ -193,9 +194,10 @@
       }
 #  endif
 #  define FMT_BEGIN_NAMESPACE \
-    namespace testdragonboxcomp { namespace fmt {           \
+    namespace testdragonboxcomp { namespace fmt {          \
     FMT_INLINE_NAMESPACE v7 {
 #endif
+//////////////////////////////////////////////////
 
 #if !defined(FMT_HEADER_ONLY) && defined(_WIN32)
 #  define FMT_CLASS_API FMT_SUPPRESS_MSC_WARNING(4275)
