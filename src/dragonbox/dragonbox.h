@@ -308,11 +308,14 @@ namespace jkj::dragonbox {
 
 				auto n32 = std::uint32_t(n);
 				if constexpr (value_bits<UInt> > 32) {
-					if (n32 == 0) {
-						n32 = std::uint32_t(n >> 32);
+					if (n32 != 0) {
+						count = 31;
 					}
-					else if (n == n32) {
-						count -= (value_bits<UInt> -32);
+					else {
+						n32 = std::uint32_t(n >> 32);
+						if (n32 != 0) {
+							count -= 1;
+						}
 					}
 				}
 				if constexpr (value_bits<UInt> > 16) {
@@ -344,7 +347,7 @@ namespace jkj::dragonbox {
 				constexpr uint128(std::uint64_t high, std::uint64_t low) noexcept :
 					internal_{ ((unsigned __int128)low) | (((unsigned __int128)high) << 64) } {}
 
-				constexpr uint128(unsigned __int128 u) : internal_{ u } {}
+				constexpr uint128(unsigned __int128 u) noexcept : internal_{ u } {}
 
 				constexpr std::uint64_t high() const noexcept {
 					return std::uint64_t(internal_ >> 64);
@@ -465,7 +468,7 @@ namespace jkj::dragonbox {
 		}
 
 		template <int k, class Int>
-		static constexpr Int compute_power(Int a) noexcept {
+		constexpr Int compute_power(Int a) noexcept {
 			static_assert(k >= 0);
 			Int p = 1;
 			for (int i = 0; i < k; ++i) {
@@ -475,7 +478,7 @@ namespace jkj::dragonbox {
 		}
 
 		template <int a, class UInt>
-		static constexpr int count_factors(UInt n) noexcept {
+		constexpr int count_factors(UInt n) noexcept {
 			static_assert(a > 1);
 			int c = 0;
 			while (n % a == 0) {
@@ -523,14 +526,19 @@ namespace jkj::dragonbox {
 
 			static constexpr std::uint64_t log10_2_fractional_digits{ 0x4d10'4d42'7de7'fbcc };
 			static constexpr std::uint64_t log10_4_over_3_fractional_digits{ 0x1ffb'fc2b'bc78'0375 };
-			constexpr std::size_t floor_log10_pow2_shift_amount = 22;
+			static constexpr std::size_t floor_log10_pow2_shift_amount = 22;
+			static constexpr int floor_log10_pow2_input_limit = 1700;
+			static constexpr int floor_log10_pow2_minus_log10_4_over_3_input_limit = 1700;
 
 			static constexpr std::uint64_t log2_10_fractional_digits{ 0x5269'e12f'346e'2bf9 };
-			constexpr std::size_t floor_log2_pow10_shift_amount = 19;
+			static constexpr std::size_t floor_log2_pow10_shift_amount = 19;
+			static constexpr int floor_log2_pow10_input_limit = 1233;
 
 			static constexpr std::uint64_t log5_2_fractional_digits{ 0x6e40'd1a4'143d'cb94 };
 			static constexpr std::uint64_t log5_3_fractional_digits{ 0xaebf'4791'5d44'3b24 };
-			constexpr std::size_t floor_log5_pow2_shift_amount = 20;
+			static constexpr std::size_t floor_log5_pow2_shift_amount = 20;
+			static constexpr int floor_log5_pow2_input_limit = 1492;
+			static constexpr int floor_log5_pow2_minus_log5_3_input_limit = 2427;
 
 			// For constexpr computation
 			// Returns -1 when n = 0
@@ -548,28 +556,32 @@ namespace jkj::dragonbox {
 				using namespace log;
 				return compute<
 					0, log10_2_fractional_digits,
-					floor_log10_pow2_shift_amount, 1700>(e);
+					floor_log10_pow2_shift_amount,
+					floor_log10_pow2_input_limit>(e);
 			}
 
 			constexpr int floor_log2_pow10(int e) noexcept {
 				using namespace log;
 				return compute<
 					3, log2_10_fractional_digits,
-					floor_log2_pow10_shift_amount, 1233>(e);
+					floor_log2_pow10_shift_amount,
+					floor_log2_pow10_input_limit>(e);
 			}
 
 			constexpr int floor_log5_pow2(int e) noexcept {
 				using namespace log;
 				return compute<
 					0, log5_2_fractional_digits,
-					floor_log5_pow2_shift_amount, 1492>(e);
+					floor_log5_pow2_shift_amount,
+					floor_log5_pow2_input_limit>(e);
 			}
 
 			constexpr int floor_log5_pow2_minus_log5_3(int e) noexcept {
 				using namespace log;
 				return compute<
 					0, log5_2_fractional_digits,
-					floor_log5_pow2_shift_amount, 2427,
+					floor_log5_pow2_shift_amount,
+					floor_log5_pow2_minus_log5_3_input_limit,
 					0, log5_3_fractional_digits>(e);
 			}
 
@@ -577,7 +589,8 @@ namespace jkj::dragonbox {
 				using namespace log;
 				return compute<
 					0, log10_2_fractional_digits,
-					floor_log10_pow2_shift_amount, 1700,
+					floor_log10_pow2_shift_amount,
+					floor_log10_pow2_minus_log10_4_over_3_input_limit,
 					0, log10_4_over_3_fractional_digits>(e);
 			}
 		}
@@ -2237,7 +2250,7 @@ namespace jkj::dragonbox {
 		// the bit representation of a floating-point number
 		template <class Float>
 		struct impl : private ieee754_traits<Float>,
-			private ieee754_format_info< ieee754_traits<Float>::format>
+			private ieee754_format_info<ieee754_traits<Float>::format>
 		{
 			using carrier_uint = typename ieee754_traits<Float>::carrier_uint;
 
@@ -2298,9 +2311,9 @@ namespace jkj::dragonbox {
 					count_factors<5>((carrier_uint(1) << (significand_bits + 1)) + 1) + 1
 				>(10) / 3);
 
-			static constexpr int shorter_interval_case_tie_lower_threshold =
+			static constexpr int shorter_interval_tie_lower_threshold =
 				-log::floor_log5_pow2_minus_log5_3(significand_bits + 4) - 2 - significand_bits;
-			static constexpr int shorter_interval_case_tie_upper_threshold =
+			static constexpr int shorter_interval_tie_upper_threshold =
 				-log::floor_log5_pow2(significand_bits + 2) - 2 - significand_bits;
 
 			//// The main algorithm assumes the input is a normal/subnormal finite number
@@ -2324,7 +2337,7 @@ namespace jkj::dragonbox {
 				if (exponent != 0) {
 					exponent += exponent_bias - significand_bits;
 
-					// Closer boundary case; proceed like Schubfach
+					// Shorter interval case; proceed like Schubfach
 					if (significand == 0) {
 						shorter_interval_case<TrailingZeroPolicy, CorrectRoundingPolicy, CachePolicy>(
 							ret_value, exponent,
@@ -2392,11 +2405,13 @@ namespace jkj::dragonbox {
 				}
 				else {
 					// r == deltai; compare fractional parts
+					// Check conditions in the order different from the paper
+					// to take advantage of short-circuiting
 					auto const two_fl = two_fc - 1;
-					if (!compute_mul_parity(two_fl, cache, beta_minus_1) &&
-						(!interval_type.include_left_endpoint() ||
-							!is_product_integer<integer_check_case_id::fc_pm_half>(
-								two_fl, exponent, minus_k)))
+					if ((!interval_type.include_left_endpoint() ||
+						!is_product_integer<integer_check_case_id::fc_pm_half>(
+							two_fl, exponent, minus_k)) &&
+						!compute_mul_parity(two_fl, cache, beta_minus_1))
 					{
 						goto small_divisor_case_label;
 					}
@@ -2553,8 +2568,8 @@ namespace jkj::dragonbox {
 					CorrectRoundingPolicy::tag !=
 					policy_impl::correct_rounding::tag_t::away_from_zero)
 				{
-					if (exponent >= shorter_interval_case_tie_lower_threshold &&
-						exponent <= shorter_interval_case_tie_upper_threshold)
+					if (exponent >= shorter_interval_tie_lower_threshold &&
+						exponent <= shorter_interval_tie_upper_threshold)
 					{
 						CorrectRoundingPolicy::break_rounding_tie(ret_value);
 					}
@@ -2953,8 +2968,7 @@ namespace jkj::dragonbox {
 				cache_entry_type const& cache, int beta_minus_1) noexcept
 			{
 				if constexpr (format == ieee754_format::binary32) {
-					return carrier_uint(
-						((cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1)) / 2;
+					return (carrier_uint(cache >> (cache_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
 				}
 				else {
 					return ((cache.high() >> (carrier_bits - significand_bits - 2 - beta_minus_1)) + 1) / 2;
