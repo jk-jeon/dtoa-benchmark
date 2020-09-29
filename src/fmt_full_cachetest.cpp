@@ -5,11 +5,11 @@
 namespace testdragonbox {}
 using namespace testdragonbox;
 #include "test.h"
-#include "fmt_dragonbox/compile.h"
+#include "fmt/compile.h"
 
-void dtoa_fmt_dragonbox(double value, char* buffer) {
+void dtoa_fmt_full_cache(double value, char* buffer) {
 	buffer = fmt::format_to(buffer, FMT_COMPILE("{}"), value);
 	*buffer = '\0';
 }
 
-REGISTER_TEST(fmt_dragonbox);
+REGISTER_TEST(fmt_full_cache);
