@@ -30,7 +30,7 @@
 // No, they aren't.
 #if defined(__GNUC__) || defined(__clang__)
 #define JKJ_SAFEBUFFERS
-#define JKJ_FORCEINLINE __attribute__((always_inline))
+#define JKJ_FORCEINLINE inline __attribute__((always_inline))
 #elif defined(_MSC_VER)
 #define JKJ_SAFEBUFFERS __declspec(safebuffers)
 #define JKJ_FORCEINLINE __forceinline
@@ -39,10 +39,8 @@
 #define JKJ_FORCEINLINE inline
 #endif
 
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
-#include <immintrin.h>
-#elif defined(_MSC_VER) && defined(_M_X64)
-#include <intrin.h>	// this includes immintrin.h as well
+#if defined(_MSC_VER)
+#include <intrin.h>
 #endif
 
 namespace jkj::dragonbox {
@@ -203,8 +201,10 @@ namespace jkj::dragonbox {
 		carrier_uint u;
 
 		ieee754_bits() = default;
-		constexpr explicit ieee754_bits(carrier_uint u) noexcept : u{ u } {}
-		constexpr explicit ieee754_bits(T x) noexcept : u{ ieee754_traits<T>::float_to_carrier(x) } {}
+		constexpr explicit ieee754_bits(carrier_uint bit_pattern) noexcept :
+			u{ bit_pattern } {}
+		constexpr explicit ieee754_bits(T float_value) noexcept :
+			u{ ieee754_traits<T>::float_to_carrier(float_value) } {}
 
 		constexpr T to_float() const noexcept {
 			return ieee754_traits<T>::carrier_to_float(u);
@@ -281,7 +281,7 @@ namespace jkj::dragonbox {
 			template <class UInt>
 			inline int countr_zero(UInt n) noexcept {
 				static_assert(std::is_unsigned_v<UInt> && value_bits<UInt> <= 64);
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__x86_64__)
+#if defined(__GNUC__) || defined(__clang__)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
 				if constexpr (std::is_same_v<UInt, unsigned long>) {
 					return __builtin_ctzl(n);
@@ -293,10 +293,16 @@ namespace jkj::dragonbox {
 					static_assert(sizeof(UInt) <= sizeof(unsigned int));
 					return __builtin_ctz((unsigned int)n);
 				}
-#elif defined(_MSC_VER) && defined(_M_X64)
+#elif defined(_MSC_VER)
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 1
 				if constexpr (std::is_same_v<UInt, unsigned __int64>) {
+#if defined(_M_X64)
 					return int(_tzcnt_u64(n));
+#else
+					return ((unsigned int)(n) == 0) ?
+						(32 + (_tzcnt_u32((unsigned int)(n >> 32)))) :
+						(_tzcnt_u32((unsigned int)n));
+#endif
 				}
 				else {
 					static_assert(sizeof(UInt) <= sizeof(unsigned int));
@@ -304,20 +310,43 @@ namespace jkj::dragonbox {
 				}
 #else
 #define JKJ_HAS_COUNTR_ZERO_INTRINSIC 0
-				int count = int(value_bits<UInt>);
-
+				int count;
 				auto n32 = std::uint32_t(n);
+
 				if constexpr (value_bits<UInt> > 32) {
 					if (n32 != 0) {
 						count = 31;
 					}
 					else {
 						n32 = std::uint32_t(n >> 32);
-						if (n32 != 0) {
-							count -= 1;
+						if constexpr (value_bits<UInt> == 64) {
+							if (n32 != 0) {
+								count = 63;
+							}
+							else {
+								return 64;
+							}
+						}
+						else {
+							count = value_bits<UInt>;
 						}
 					}
 				}
+				else {
+					if constexpr (value_bits<UInt> == 32) {
+						if (n32 != 0) {
+							count = 31;
+						}
+						else {
+							return 32;
+						}
+					}
+					else {
+						count = value_bits<UInt>;
+					}
+				}
+
+				n32 &= (0 - n32);
 				if constexpr (value_bits<UInt> > 16) {
 					if ((n32 & 0x0000ffff) != 0) count -= 16;
 				}
@@ -341,7 +370,7 @@ namespace jkj::dragonbox {
 			struct uint128 {
 				uint128() = default;
 
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
+#if defined(__SIZEOF_INT128__)
 				unsigned __int128	internal_;
 
 				constexpr uint128(std::uint64_t high, std::uint64_t low) noexcept :
@@ -389,54 +418,58 @@ namespace jkj::dragonbox {
 #endif
 			};
 
+			static inline std::uint64_t umul64(std::uint32_t x, std::uint32_t y) noexcept {
+#if defined(_MSC_VER) && defined(_M_IX86)
+				return __emulu(x, y);
+#else
+				return x * std::uint64_t(y);
+#endif
+			}
+
 			// Get 128-bit result of multiplication of two 64-bit unsigned integers
 			JKJ_SAFEBUFFERS inline uint128 umul128(std::uint64_t x, std::uint64_t y) noexcept {
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
+#if defined(__SIZEOF_INT128__)
 				return (unsigned __int128)(x) * (unsigned __int128)(y);
 #elif defined(_MSC_VER) && defined(_M_X64)
 				uint128 result;
 				result.low_ = _umul128(x, y, &result.high_);
 				return result;
 #else
-				constexpr auto mask = (std::uint64_t(1) << 32) - std::uint64_t(1);
+				auto a = std::uint32_t(x >> 32);
+				auto b = std::uint32_t(x);
+				auto c = std::uint32_t(y >> 32);
+				auto d = std::uint32_t(y);
 
-				auto a = x >> 32;
-				auto b = x & mask;
-				auto c = y >> 32;
-				auto d = y & mask;
+				auto ac = umul64(a, c);
+				auto bc = umul64(b, c);
+				auto ad = umul64(a, d);
+				auto bd = umul64(b, d);
 
-				auto ac = a * c;
-				auto bc = b * c;
-				auto ad = a * d;
-				auto bd = b * d;
-
-				auto intermediate = (bd >> 32) + (ad & mask) + (bc & mask);
+				auto intermediate = (bd >> 32) + std::uint32_t(ad) + std::uint32_t(bc);
 
 				return{ ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32),
-					(intermediate << 32) + (bd & mask) };
+					(intermediate << 32) + std::uint32_t(bd) };
 #endif
 			}
 
 			JKJ_SAFEBUFFERS inline std::uint64_t umul128_upper64(std::uint64_t x, std::uint64_t y) noexcept {
-#if (defined(__GNUC__) || defined(__clang__)) && defined(__SIZEOF_INT128__) && defined(__x86_64__)
+#if defined(__SIZEOF_INT128__)
 				auto p = (unsigned __int128)(x) * (unsigned __int128)(y);
 				return std::uint64_t(p >> 64);
 #elif defined(_MSC_VER) && defined(_M_X64)
 				return __umulh(x, y);
 #else
-				constexpr auto mask = (std::uint64_t(1) << 32) - std::uint64_t(1);
+				auto a = std::uint32_t(x >> 32);
+				auto b = std::uint32_t(x);
+				auto c = std::uint32_t(y >> 32);
+				auto d = std::uint32_t(y);
 
-				auto a = x >> 32;
-				auto b = x & mask;
-				auto c = y >> 32;
-				auto d = y & mask;
+				auto ac = umul64(a, c);
+				auto bc = umul64(b, c);
+				auto ad = umul64(a, d);
+				auto bd = umul64(b, d);
 
-				auto ac = a * c;
-				auto bc = b * c;
-				auto ad = a * d;
-				auto bd = b * d;
-
-				auto intermediate = (bd >> 32) + (ad & mask) + (bc & mask);
+				auto intermediate = (bd >> 32) + std::uint32_t(ad) + std::uint32_t(bc);
 
 				return ac + (intermediate >> 32) + (ad >> 32) + (bc >> 32);
 #endif
@@ -451,7 +484,22 @@ namespace jkj::dragonbox {
 
 			// Get upper 32-bits of multiplication of a 32-bit unsigned integer and a 64-bit unsigned integer
 			inline std::uint32_t umul96_upper32(std::uint32_t x, std::uint64_t y) noexcept {
+#if defined(__SIZEOF_INT128__) || (defined(_MSC_VER) && defined(_M_X64))
 				return std::uint32_t(umul128_upper64(x, y));
+#else
+				//std::uint32_t a = 0;
+				auto b = x;
+				auto c = std::uint32_t(y >> 32);
+				auto d = std::uint32_t(y);
+
+				//std::uint64_t ac = 0;
+				auto bc = umul64(b, c);
+				//std::uint64_t ad = 0;
+				auto bd = umul64(b, d);
+
+				auto intermediate = (bd >> 32) + bc;
+				return std::uint32_t(intermediate >> 32);
+#endif
 			}
 
 			// Get middle 64-bits of multiplication of a 64-bit unsigned integer and a 128-bit unsigned integer
@@ -524,21 +572,21 @@ namespace jkj::dragonbox {
 				return int((std::int32_t(e) * c - s) >> shift_amount);
 			}
 
-			static constexpr std::uint64_t log10_2_fractional_digits{ 0x4d10'4d42'7de7'fbcc };
-			static constexpr std::uint64_t log10_4_over_3_fractional_digits{ 0x1ffb'fc2b'bc78'0375 };
-			static constexpr std::size_t floor_log10_pow2_shift_amount = 22;
-			static constexpr int floor_log10_pow2_input_limit = 1700;
-			static constexpr int floor_log10_pow2_minus_log10_4_over_3_input_limit = 1700;
+			inline constexpr std::uint64_t log10_2_fractional_digits{ 0x4d10'4d42'7de7'fbcc };
+			inline constexpr std::uint64_t log10_4_over_3_fractional_digits{ 0x1ffb'fc2b'bc78'0375 };
+			inline constexpr std::size_t floor_log10_pow2_shift_amount = 22;
+			inline constexpr int floor_log10_pow2_input_limit = 1700;
+			inline constexpr int floor_log10_pow2_minus_log10_4_over_3_input_limit = 1700;
 
-			static constexpr std::uint64_t log2_10_fractional_digits{ 0x5269'e12f'346e'2bf9 };
-			static constexpr std::size_t floor_log2_pow10_shift_amount = 19;
-			static constexpr int floor_log2_pow10_input_limit = 1233;
+			inline constexpr std::uint64_t log2_10_fractional_digits{ 0x5269'e12f'346e'2bf9 };
+			inline constexpr std::size_t floor_log2_pow10_shift_amount = 19;
+			inline constexpr int floor_log2_pow10_input_limit = 1233;
 
-			static constexpr std::uint64_t log5_2_fractional_digits{ 0x6e40'd1a4'143d'cb94 };
-			static constexpr std::uint64_t log5_3_fractional_digits{ 0xaebf'4791'5d44'3b24 };
-			static constexpr std::size_t floor_log5_pow2_shift_amount = 20;
-			static constexpr int floor_log5_pow2_input_limit = 1492;
-			static constexpr int floor_log5_pow2_minus_log5_3_input_limit = 2427;
+			inline constexpr std::uint64_t log5_2_fractional_digits{ 0x6e40'd1a4'143d'cb94 };
+			inline constexpr std::uint64_t log5_3_fractional_digits{ 0xaebf'4791'5d44'3b24 };
+			inline constexpr std::size_t floor_log5_pow2_shift_amount = 20;
+			inline constexpr int floor_log5_pow2_input_limit = 1492;
+			inline constexpr int floor_log5_pow2_minus_log5_3_input_limit = 2427;
 
 			// For constexpr computation
 			// Returns -1 when n = 0
@@ -601,12 +649,12 @@ namespace jkj::dragonbox {
 
 		namespace div {
 			template <class UInt, UInt a>
-			constexpr UInt modular_inverse(int bit_width = int(value_bits<UInt>)) noexcept {
+			constexpr UInt modular_inverse(unsigned int bit_width = unsigned(value_bits<UInt>)) noexcept {
 				// By Euler's theorem, a^phi(2^n) == 1 (mod 2^n),
 				// where phi(2^n) = 2^(n-1), so the modular inverse of a is
 				// a^(2^(n-1) - 1) = a^(1 + 2 + 2^2 + ... + 2^(n-2))
 				std::common_type_t<UInt, unsigned int> mod_inverse = 1;
-				for (int i = 1; i < bit_width; ++i) {
+				for (unsigned int i = 1; i < bit_width; ++i) {
 					mod_inverse = mod_inverse * mod_inverse * a;
 				}
 				if (bit_width < value_bits<UInt>) {
@@ -618,25 +666,25 @@ namespace jkj::dragonbox {
 				}
 			}
 
-			template <class UInt, UInt a, int N>
+			template <class UInt, UInt a, std::size_t N>
 			struct table_t {
 				static_assert(std::is_unsigned_v<UInt>);
 				static_assert(a % 2 != 0);
 				static_assert(N > 0);
 
-				static constexpr int size = N;
+				static constexpr std::size_t size = N;
 				UInt mod_inv[N];
 				UInt max_quotients[N];
 			};
 
-			template <class UInt, UInt a, int N>
+			template <class UInt, UInt a, std::size_t N>
 			struct table_holder {
 				static constexpr table_t<UInt, a, N> table = [] {
 					constexpr auto mod_inverse = modular_inverse<UInt, a>();
 					table_t<UInt, a, N> table{};
 					std::common_type_t<UInt, unsigned int> pow_of_mod_inverse = 1;
 					UInt pow_of_a = 1;
-					for (int i = 0; i < N; ++i) {
+					for (std::size_t i = 0; i < N; ++i) {
 						table.mod_inv[i] = UInt(pow_of_mod_inverse);
 						table.max_quotients[i] = UInt(std::numeric_limits<UInt>::max() / pow_of_a);
 
@@ -651,7 +699,7 @@ namespace jkj::dragonbox {
 			template <std::size_t table_size, class UInt>
 			constexpr bool divisible_by_power_of_5(UInt x, unsigned int exp) noexcept {
 				auto const& table = table_holder<UInt, 5, table_size>::table;
-				assert(exp < (unsigned int)(table.size));
+				assert(exp < table.size);
 				return (x * table.mod_inv[exp]) <= table.max_quotients[exp];
 			}
 
@@ -662,10 +710,11 @@ namespace jkj::dragonbox {
 #if JKJ_HAS_COUNTR_ZERO_INTRINSIC
 				return bits::countr_zero(x) >= int(exp);
 #else
-				if (exp >= int(value_bits<UInt>)) {
+				if (exp >= value_bits<UInt>) {
 					return false;
 				}
-				return x == ((x >> exp) << exp);
+				auto mask = UInt((UInt(1) << exp) - 1);
+				return (x & mask) == 0;
 #endif
 			}
 
@@ -2061,7 +2110,7 @@ namespace jkj::dragonbox {
 					static constexpr auto tag = tag_t::away_from_zero;
 
 					template <class Fp>
-					static constexpr void break_rounding_tie(Fp& fp) noexcept {}
+					static constexpr void break_rounding_tie(Fp& /*fp*/) noexcept {}
 				};
 
 				struct toward_zero : base {
@@ -2179,65 +2228,65 @@ namespace jkj::dragonbox {
 	
 	namespace policy {
 		namespace sign {
-			static constexpr auto ignore = detail::policy_impl::sign::ignore{};
-			static constexpr auto return_sign = detail::policy_impl::sign::return_sign{};
+			inline constexpr auto ignore = detail::policy_impl::sign::ignore{};
+			inline constexpr auto return_sign = detail::policy_impl::sign::return_sign{};
 		}
 
 		namespace trailing_zero {
-			static constexpr auto ignore = detail::policy_impl::trailing_zero::ignore{};
-			static constexpr auto remove = detail::policy_impl::trailing_zero::remove{};
-			static constexpr auto report = detail::policy_impl::trailing_zero::report{};
+			inline constexpr auto ignore = detail::policy_impl::trailing_zero::ignore{};
+			inline constexpr auto remove = detail::policy_impl::trailing_zero::remove{};
+			inline constexpr auto report = detail::policy_impl::trailing_zero::report{};
 		}
 
 		namespace rounding_mode {
-			static constexpr auto nearest_to_even =
+			inline constexpr auto nearest_to_even =
 				detail::policy_impl::rounding_mode::nearest_to_even{};
-			static constexpr auto nearest_to_odd =
+			inline constexpr auto nearest_to_odd =
 				detail::policy_impl::rounding_mode::nearest_to_odd{};
-			static constexpr auto nearest_toward_plus_infinity =
+			inline constexpr auto nearest_toward_plus_infinity =
 				detail::policy_impl::rounding_mode::nearest_toward_plus_infinity{};
-			static constexpr auto nearest_toward_minus_infinity =
+			inline constexpr auto nearest_toward_minus_infinity =
 				detail::policy_impl::rounding_mode::nearest_toward_minus_infinity{};
-			static constexpr auto nearest_toward_zero =
+			inline constexpr auto nearest_toward_zero =
 				detail::policy_impl::rounding_mode::nearest_toward_zero{};
-			static constexpr auto nearest_away_from_zero =
+			inline constexpr auto nearest_away_from_zero =
 				detail::policy_impl::rounding_mode::nearest_away_from_zero{};
 
-			static constexpr auto nearest_to_even_static_boundary =
+			inline constexpr auto nearest_to_even_static_boundary =
 				detail::policy_impl::rounding_mode::nearest_to_even_static_boundary{};
-			static constexpr auto nearest_to_odd_static_boundary =
+			inline constexpr auto nearest_to_odd_static_boundary =
 				detail::policy_impl::rounding_mode::nearest_to_odd_static_boundary{};
-			static constexpr auto nearest_toward_plus_infinity_static_boundary =
+			inline constexpr auto nearest_toward_plus_infinity_static_boundary =
 				detail::policy_impl::rounding_mode::nearest_toward_plus_infinity_static_boundary{};
-			static constexpr auto nearest_toward_minus_infinity_static_boundary =
+			inline constexpr auto nearest_toward_minus_infinity_static_boundary =
 				detail::policy_impl::rounding_mode::nearest_toward_minus_infinity_static_boundary{};
 
-			static constexpr auto toward_plus_infinity =
+			inline constexpr auto toward_plus_infinity =
 				detail::policy_impl::rounding_mode::toward_plus_infinity{};
-			static constexpr auto toward_minus_infinity =
+			inline constexpr auto toward_minus_infinity =
 				detail::policy_impl::rounding_mode::toward_minus_infinity{};
-			static constexpr auto toward_zero =
+			inline constexpr auto toward_zero =
 				detail::policy_impl::rounding_mode::toward_zero{};
-			static constexpr auto away_from_zero =
+			inline constexpr auto away_from_zero =
 				detail::policy_impl::rounding_mode::away_from_zero{};
 		}
 
 		namespace correct_rounding {
-			static constexpr auto do_not_care = detail::policy_impl::correct_rounding::do_not_care{};
-			static constexpr auto to_even = detail::policy_impl::correct_rounding::to_even{};
-			static constexpr auto to_odd = detail::policy_impl::correct_rounding::to_odd{};
-			static constexpr auto away_from_zero = detail::policy_impl::correct_rounding::away_from_zero{};
-			static constexpr auto toward_zero = detail::policy_impl::correct_rounding::toward_zero{};
+			inline constexpr auto do_not_care = detail::policy_impl::correct_rounding::do_not_care{};
+			inline constexpr auto to_even = detail::policy_impl::correct_rounding::to_even{};
+			inline constexpr auto to_odd = detail::policy_impl::correct_rounding::to_odd{};
+			inline constexpr auto away_from_zero = detail::policy_impl::correct_rounding::away_from_zero{};
+			inline constexpr auto toward_zero = detail::policy_impl::correct_rounding::toward_zero{};
 		}
 
 		namespace cache {
-			static constexpr auto normal = detail::policy_impl::cache::normal{};
-			static constexpr auto compressed = detail::policy_impl::cache::compressed{};
+			inline constexpr auto normal = detail::policy_impl::cache::normal{};
+			inline constexpr auto compressed = detail::policy_impl::cache::compressed{};
 		}
 
 		namespace input_validation {
-			static constexpr auto assert_finite = detail::policy_impl::input_validation::assert_finite{};
-			static constexpr auto do_nothing = detail::policy_impl::input_validation::do_nothing{};
+			inline constexpr auto assert_finite = detail::policy_impl::input_validation::assert_finite{};
+			inline constexpr auto do_nothing = detail::policy_impl::input_validation::do_nothing{};
 		}
 	}
 
@@ -3256,3 +3305,4 @@ namespace jkj::dragonbox {
 #undef JKJ_SAFEBUFFERS
 
 #endif
+
