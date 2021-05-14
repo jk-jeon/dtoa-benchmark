@@ -8,7 +8,7 @@ void dtoa_erthink(double v, char *const buffer) {
 
 REGISTER_TEST(erthink);
 
-void dtoa_erthink_shodan(double v, char *const buffer) {
+/*void dtoa_erthink_shodan(double v, char *const buffer) {
   erthink::grisu::shodan_printer<true> printer(
       buffer, buffer + erthink::grisu::shodan_printer<>::buffer_size);
   erthink::grisu::convert(printer, v);
@@ -18,3 +18,4 @@ void dtoa_erthink_shodan(double v, char *const buffer) {
 }
 
 REGISTER_TEST(erthink_shodan);
+*/
