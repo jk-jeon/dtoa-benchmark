@@ -27,7 +27,7 @@
 #include <cstddef>
 #include <array>
 
-#include "floaxie/powers_ten.h"
+#include <floaxie/powers_ten.h>
 
 namespace floaxie
 {

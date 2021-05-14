@@ -31,11 +31,11 @@
 #include <ostream>
 #include <utility>
 
-#include "floaxie/bit_ops.h"
-#include "floaxie/print.h"
-#include "floaxie/type_punning_cast.h"
-#include "floaxie/huge_val.h"
-#include "floaxie/conversion_status.h"
+#include <floaxie/bit_ops.h>
+#include <floaxie/print.h>
+#include <floaxie/type_punning_cast.h>
+#include <floaxie/huge_val.h>
+#include <floaxie/conversion_status.h>
 
 namespace floaxie
 {
@@ -205,7 +205,7 @@ namespace floaxie
 
 			if (m_e >= std::numeric_limits<FloatType>::max_exponent)
 			{
-				ret.value = huge_value<FloatType>;
+				ret.value = huge_value<FloatType>();
 				ret.status = conversion_status::overflow;
 				return ret;
 			}

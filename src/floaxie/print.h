@@ -25,8 +25,8 @@
 #include <string>
 #include <cstdint>
 
-#include "floaxie/type_punning_cast.h"
-#include "floaxie/bit_ops.h"
+#include <floaxie/type_punning_cast.h>
+#include <floaxie/bit_ops.h>
 
 namespace floaxie
 {

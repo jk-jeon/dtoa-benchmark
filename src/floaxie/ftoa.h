@@ -23,8 +23,8 @@
 #include <cstddef>
 #include <cassert>
 
-#include "floaxie/grisu.h"
-#include "floaxie/prettify.h"
+#include <floaxie/grisu.h>
+#include <floaxie/prettify.h>
 
 namespace floaxie
 {

@@ -33,13 +33,13 @@
 #include <cstddef>
 #include <cassert>
 
-#include "floaxie/diy_fp.h"
-#include "floaxie/cached_power.h"
-#include "floaxie/k_comp.h"
-#include "floaxie/static_pow.h"
-#include "floaxie/integer_of_size.h"
-#include "floaxie/bit_ops.h"
-#include "floaxie/memwrap.h"
+#include <floaxie/diy_fp.h>
+#include <floaxie/cached_power.h>
+#include <floaxie/k_comp.h>
+#include <floaxie/static_pow.h>
+#include <floaxie/integer_of_size.h>
+#include <floaxie/bit_ops.h>
+#include <floaxie/memwrap.h>
 
 namespace floaxie
 {

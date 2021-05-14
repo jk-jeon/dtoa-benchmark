@@ -29,9 +29,9 @@
 #include <cstdlib>
 #include <algorithm>
 
-#include "floaxie/static_pow.h"
-#include "floaxie/print.h"
-#include "floaxie/memwrap.h"
+#include <floaxie/static_pow.h>
+#include <floaxie/print.h>
+#include <floaxie/memwrap.h>
 
 namespace floaxie
 {
