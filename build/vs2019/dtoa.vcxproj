@@ -322,6 +322,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\dragonbox.cpp" />
+    <ClCompile Include="..\..\src\dragonbox\dragonbox_to_chars.cpp" />
     <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc" />
     <ClCompile Include="..\..\src\emygtest.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
