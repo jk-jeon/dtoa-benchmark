@@ -294,6 +294,9 @@
     <ClInclude Include="..\..\src\fmt\format-inl.h">
       <Filter>fmt</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\dragonbox\dragonbox_to_chars.h">
+      <Filter>dragonbox</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\doubleconvtest.cpp" />

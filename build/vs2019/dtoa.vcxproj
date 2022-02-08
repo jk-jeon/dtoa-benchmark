@@ -98,6 +98,9 @@
     <TargetName>dtoa_release_x64_vs2019</TargetName>
     <TargetExt>.exe</TargetExt>
   </PropertyGroup>
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnabled>false</VcpkgEnabled>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='release|Win32'">
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -211,6 +214,7 @@
     <ClInclude Include="..\..\src\double-conversion\strtod.h" />
     <ClInclude Include="..\..\src\double-conversion\utils.h" />
     <ClInclude Include="..\..\src\dragonbox\dragonbox.h" />
+    <ClInclude Include="..\..\src\dragonbox\dragonbox_to_chars.h" />
     <ClInclude Include="..\..\src\emyg\emyg_dtoa.h" />
     <ClInclude Include="..\..\src\erthink\erthink.h" />
     <ClInclude Include="..\..\src\erthink\erthink_arch.h" />
@@ -325,12 +329,15 @@
     <ClCompile Include="..\..\src\dragonbox\dragonbox_to_chars.cpp" />
     <ClCompile Include="..\..\src\emyg\emyg_dtoa.cc" />
     <ClCompile Include="..\..\src\emygtest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
     </ClCompile>
-    <ClCompile Include="..\..\src\erthink_test.cpp" />
+    <ClCompile Include="..\..\src\erthink_test.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="..\..\src\floaxietest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\fmttest.cpp">
@@ -348,12 +355,12 @@
     <ClCompile Include="..\..\src\gay\dtoa.c" />
     <ClCompile Include="..\..\src\gay\g_fmt.c" />
     <ClCompile Include="..\..\src\gaytest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\grisu\grisu2b_59_56.c" />
     <ClCompile Include="..\..\src\grisu2btest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\grisu_exact.cpp">
@@ -370,7 +377,7 @@
     </ClCompile>
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\milotest.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='release_clang|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="..\..\src\milo_only_Grisu2.cpp">
