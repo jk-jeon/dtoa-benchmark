@@ -36,8 +36,7 @@ template <typename OutputIt> class truncating_iterator_base {
   using difference_type = std::ptrdiff_t;
   using pointer = void;
   using reference = void;
-  using _Unchecked_type =
-      truncating_iterator_base;  // Mark iterator as checked.
+  FMT_UNCHECKED_ITERATOR(truncating_iterator_base);
 
   OutputIt base() const { return out_; }
   size_t count() const { return count_; }
@@ -124,7 +123,7 @@ struct is_compiled_string : std::is_base_of<compiled_string, S> {};
 #  define FMT_COMPILE(s) FMT_STRING(s)
 #endif
 
-#if FMT_USE_NONTYPE_TEMPLATE_PARAMETERS
+#if FMT_USE_NONTYPE_TEMPLATE_ARGS
 template <typename Char, size_t N,
           fmt::detail_exported::fixed_string<Char, N> Str>
 struct udl_compiled_string : compiled_string {
@@ -338,7 +337,8 @@ template <typename T, typename Char>
 constexpr parse_specs_result<T, Char> parse_specs(basic_string_view<Char> str,
                                                   size_t pos, int next_arg_id) {
   str.remove_prefix(pos);
-  auto ctx = basic_format_parse_context<Char>(str, {}, next_arg_id);
+  auto ctx = compile_parse_context<Char>(str, max_value<int>(), nullptr, {},
+                                         next_arg_id);
   auto f = formatter<T, Char>();
   auto end = f.parse(ctx);
   return {f, pos + fmt::detail::to_unsigned(end - str.data()) + 1,
@@ -587,14 +587,12 @@ void print(const S& format_str, const Args&... args) {
   print(stdout, format_str, args...);
 }
 
-#if FMT_USE_NONTYPE_TEMPLATE_PARAMETERS
+#if FMT_USE_NONTYPE_TEMPLATE_ARGS
 inline namespace literals {
-template <detail_exported::fixed_string Str>
-constexpr detail::udl_compiled_string<
-    remove_cvref_t<decltype(Str.data[0])>,
-    sizeof(Str.data) / sizeof(decltype(Str.data[0])), Str>
-operator""_cf() {
-  return {};
+template <detail_exported::fixed_string Str> constexpr auto operator""_cf() {
+  using char_t = remove_cvref_t<decltype(Str.data[0])>;
+  return detail::udl_compiled_string<char_t, sizeof(Str.data) / sizeof(char_t),
+                                     Str>();
 }
 }  // namespace literals
 #endif

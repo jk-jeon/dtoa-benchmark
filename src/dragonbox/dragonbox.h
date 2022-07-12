@@ -341,12 +341,12 @@ namespace jkj::dragonbox {
 
             // clang-format off
     #if defined(__SIZEOF_INT128__)
-                // To silence "error: ISO C++ does not support '__int128' for 'type name'
-                // [-Wpedantic]"
+            // To silence "error: ISO C++ does not support '__int128' for 'type name'
+            // [-Wpedantic]"
         #if defined(__GNUC__)
             __extension__
         #endif
-                using builtin_uint128_t = unsigned __int128;
+            using builtin_uint128_t = unsigned __int128;
     #endif
             // clang-format on
 
@@ -1746,14 +1746,6 @@ namespace jkj::dragonbox {
             using cache_entry_type = typename cache_holder<format>::cache_entry_type;
             static constexpr auto cache_bits = cache_holder<format>::cache_bits;
 
-            static constexpr int max_power_of_factor_of_5 =
-                log::floor_log5_pow2(int(significand_bits + 2));
-            static constexpr int divisibility_check_by_5_threshold =
-                log::floor_log2_pow10(max_power_of_factor_of_5 + kappa + 1);
-
-            static constexpr int case_fc_pm_half_lower_threshold =
-                -kappa - log::floor_log5_pow2(kappa);
-
             static constexpr int case_shorter_interval_left_endpoint_lower_threshold = 2;
             static constexpr int case_shorter_interval_left_endpoint_upper_threshold =
                 2 +
@@ -1836,12 +1828,13 @@ namespace jkj::dragonbox {
 
                 if (r < deltai) {
                     // Exclude the right endpoint if necessary.
-                    if (r == 0 && is_z_integer && !interval_type.include_right_endpoint()) {
+                    if (r == 0 && (is_z_integer & !interval_type.include_right_endpoint())) {
                         if constexpr (BinaryToDecimalRoundingPolicy::tag ==
                                       policy_impl::binary_to_decimal_rounding::tag_t::do_not_care) {
                             ret_value.significand *= 10;
                             ret_value.exponent = minus_k + kappa;
                             --ret_value.significand;
+                            TrailingZeroPolicy::template no_trailing_zeros<impl>(ret_value);
                             return ret_value;
                         }
                         else {
@@ -1856,26 +1849,11 @@ namespace jkj::dragonbox {
                 }
                 else {
                     // r == deltai; compare fractional parts.
-                    auto const two_fl = two_fc - 1;
+                    auto const [xi_parity, x_is_integer] =
+                        compute_mul_parity(two_fc - 1, cache, beta);
 
-                    if (!interval_type.include_left_endpoint() ||
-                        exponent < case_fc_pm_half_lower_threshold ||
-                        exponent > divisibility_check_by_5_threshold) {
-                        // If the left endpoint is not included, the condition for
-                        // success is z^(f) < delta^(f) (odd parity).
-                        // Otherwise, the inequalities on exponent ensure that
-                        // x is not an integer, so if z^(f) >= delta^(f) (even parity), we in fact
-                        // have strict inequality.
-                        if (!compute_mul_parity(two_fl, cache, beta).parity) {
-                            goto small_divisor_case_label;
-                        }
-                    }
-                    else {
-                        auto const [xi_parity, x_is_integer] =
-                            compute_mul_parity(two_fl, cache, beta);
-                        if (!xi_parity && !x_is_integer) {
-                            goto small_divisor_case_label;
-                        }
+                    if (!(xi_parity | (x_is_integer & interval_type.include_left_endpoint()))) {
+                        goto small_divisor_case_label;
                     }
                 }
                 ret_value.exponent = minus_k + kappa + 1;
@@ -1942,7 +1920,7 @@ namespace jkj::dragonbox {
                             // If z^(f) >= epsilon^(f), we might have a tie
                             // when z^(f) == epsilon^(f), or equivalently, when y is an integer.
                             // For tie-to-up case, we can just choose the upper one.
-                            if (BinaryToDecimalRoundingPolicy::prefer_round_down(ret_value) &&
+                            if (BinaryToDecimalRoundingPolicy::prefer_round_down(ret_value) &
                                 is_y_integer) {
                                 --ret_value.significand;
                             }
@@ -2055,7 +2033,9 @@ namespace jkj::dragonbox {
                 // Using an upper bound on xi, we might be able to optimize the division
                 // better than the compiler; we are computing xi / big_divisor here.
                 ret_value.significand =
-                    div::divide_by_pow10<kappa + 1, significand_bits + kappa + 2, kappa + 1>(xi);
+                    div::divide_by_pow10<kappa + 1, carrier_uint,
+                                         (carrier_uint(1) << (significand_bits + 1)) * big_divisor -
+                                             1>(xi);
                 auto r = std::uint32_t(xi - big_divisor * ret_value.significand);
 
                 if (r != 0) {
@@ -2130,7 +2110,9 @@ namespace jkj::dragonbox {
                 // Using an upper bound on zi, we might be able to optimize the division better than
                 // the compiler; we are computing zi / big_divisor here.
                 ret_value.significand =
-                    div::divide_by_pow10<kappa + 1, significand_bits + kappa + 2, kappa + 1>(zi);
+                    div::divide_by_pow10<kappa + 1, carrier_uint,
+                                         (carrier_uint(1) << (significand_bits + 1)) * big_divisor -
+                                             1>(zi);
                 auto const r = std::uint32_t(zi - big_divisor * ret_value.significand);
 
                 if (r > deltai) {
@@ -2547,7 +2529,7 @@ namespace jkj::dragonbox {
 
                         // Shorter interval case; proceed like Schubfach.
                         // One might think this condition is wrong, since when exponent_bits == 1
-                        // and two_fc == 0, the interval is actullay regular. However, it turns out
+                        // and two_fc == 0, the interval is actually regular. However, it turns out
                         // that this seemingly wrong condition is actually fine, because the end
                         // result is anyway the same.
                         //
