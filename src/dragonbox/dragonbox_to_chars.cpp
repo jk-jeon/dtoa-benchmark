@@ -1,4 +1,4 @@
-// Copyright 2020-2021 Junekey Jeon
+// Copyright 2020-2022 Junekey Jeon
 //
 // The contents of this file may be used under the terms of
 // the Apache License v2.0 with LLVM Exceptions.
@@ -53,6 +53,28 @@ namespace jkj::dragonbox {
             '9', '0', '9', '1', '9', '2', '9', '3', '9', '4', //
             '9', '5', '9', '6', '9', '7', '9', '8', '9', '9'  //
         };
+        static constexpr char radix_100_head_table[] = {
+            '0', '.', '1', '.', '2', '.', '3', '.', '4', '.', //
+            '5', '.', '6', '.', '7', '.', '8', '.', '9', '.', //
+            '1', '.', '1', '.', '1', '.', '1', '.', '1', '.', //
+            '1', '.', '1', '.', '1', '.', '1', '.', '1', '.', //
+            '2', '.', '2', '.', '2', '.', '2', '.', '2', '.', //
+            '2', '.', '2', '.', '2', '.', '2', '.', '2', '.', //
+            '3', '.', '3', '.', '3', '.', '3', '.', '3', '.', //
+            '3', '.', '3', '.', '3', '.', '3', '.', '3', '.', //
+            '4', '.', '4', '.', '4', '.', '4', '.', '4', '.', //
+            '4', '.', '4', '.', '4', '.', '4', '.', '4', '.', //
+            '5', '.', '5', '.', '5', '.', '5', '.', '5', '.', //
+            '5', '.', '5', '.', '5', '.', '5', '.', '5', '.', //
+            '6', '.', '6', '.', '6', '.', '6', '.', '6', '.', //
+            '6', '.', '6', '.', '6', '.', '6', '.', '6', '.', //
+            '7', '.', '7', '.', '7', '.', '7', '.', '7', '.', //
+            '7', '.', '7', '.', '7', '.', '7', '.', '7', '.', //
+            '8', '.', '8', '.', '8', '.', '8', '.', '8', '.', //
+            '8', '.', '8', '.', '8', '.', '8', '.', '8', '.', //
+            '9', '.', '9', '.', '9', '.', '9', '.', '9', '.', //
+            '9', '.', '9', '.', '9', '.', '9', '.', '9', '.'  //
+        };
 
         // These digit generation routines are inspired by James Anhalt's itoa algorithm:
         // https://github.com/jeaiii/itoa
@@ -60,98 +82,193 @@ namespace jkj::dragonbox {
         // where k is an appropriate integer depending on the length of n.
         // For example, if n = 1234567, we set k = 6. In this case, we have
         // floor(y / 2^32) = 1,
-        // floor(10^2 * (y mod 2^32) / 2^32) = 23,
-        // floor(10^2 * (10^2 * y mod 2^32) / 2^32) = 45, and
-        // floor(10^2 * (10^4 * y mod 2^32) / 2^32) = 67.
+        // floor(10^2 * ((10^0 * y) mod 2^32) / 2^32) = 23,
+        // floor(10^2 * ((10^2 * y) mod 2^32) / 2^32) = 45, and
+        // floor(10^2 * ((10^4 * y) mod 2^32) / 2^32) = 67.
+        // See https://jk-jeon.github.io/posts/2022/02/jeaiii-algorithm/ for more explanation.
 
         JKJ_FORCEINLINE static void print_9_digits(std::uint32_t s32, int& exponent,
                                                    char*& buffer) noexcept {
-            std::uint64_t prod;
+            // -- IEEE-754 binary32
+            // Since we do not cut trailing zeros in advance, s32 must be of 6~9 digits
+            // unless the original input was subnormal.
+            // In particular, when it is of 9 digits it shouldn't have any trailing zeros.
+            // -- IEEE-754 binary64
+            // In this case, s32 must be of 7~9 digits unless the input is subnormal,
+            // and it shouldn't have any trailing zeros if it is of 9 digits.
+            if (s32 >= 1'0000'0000) {
+                // 9 digits.
+                // 1441151882 = ceil(2^57 / 1'0000'0000) + 1
+                auto prod = s32 * std::uint64_t(1441151882);
+                prod >>= 25;
+                std::memcpy(buffer, radix_100_head_table + std::uint32_t(prod >> 32) * 2, 2);
 
-            auto get_next_two_digits = [&]() {
                 prod = std::uint32_t(prod) * std::uint64_t(100);
-                return int(prod >> 32);
-            };
-            auto print_1_initial = [&](int digit) {
-                buffer[0] = char(digit + '0');
-                buffer[1] = '.';
-                buffer += 2;
-            };
-            auto print_2_initial = [&](int two_digits) {
-                buffer[0] = radix_100_table[two_digits * 2];
-                buffer[1] = '.';
+                std::memcpy(buffer + 2, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                prod = std::uint32_t(prod) * std::uint64_t(100);
+                std::memcpy(buffer + 4, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                prod = std::uint32_t(prod) * std::uint64_t(100);
+                std::memcpy(buffer + 6, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                prod = std::uint32_t(prod) * std::uint64_t(100);
+                std::memcpy(buffer + 8, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+
+                exponent += 8;
+                buffer += 10;
+            }
+            else if (s32 >= 100'0000) {
+                // 7 or 8 digits.
+                // 281474978 = ceil(2^48 / 100'0000) + 1
+                auto prod = s32 * std::uint64_t(281474978);
+                prod >>= 16;
+                auto two_digits = std::uint32_t(prod >> 32);
+                // If s32 is of 8 digits, increase the exponent by 7.
+                // Otherwise, increase it by 6.
+                exponent += (6 + unsigned(two_digits >= 10));
+
+                // Write the first digit and the decimal point.
+                std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                // This third character may be overwritten later but we don't care.
                 buffer[2] = radix_100_table[two_digits * 2 + 1];
-                buffer += 3;
-            };
-            auto print_2 = [&](int two_digits) {
-                std::memcpy(buffer, radix_100_table + two_digits * 2, 2);
-                buffer += 2;
-            };
-            auto print = [&](std::uint64_t magic_number, int extra_shift, auto remaining_count) {
-                prod = s32 * magic_number;
-                prod >>= extra_shift;
-                auto two_digits = int(prod >> 32);
 
-                if (two_digits < 10) {
-                    print_1_initial(two_digits);
-                    exponent += (2 * remaining_count);
-                    for (int i = 0; i < remaining_count; ++i) {
-                        print_2(get_next_two_digits());
-                    }
+                // Remaining 6 digits are all zero?
+                if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 100'0000)) {
+                    // The number of characters actually written is:
+                    //   1, if only the first digit is nonzero, which means that either s32 is of 7
+                    //   digits or it is of 8 digits but the second digit is zero, or
+                    //   3, otherwise.
+                    // Note that buffer[2] is never zero if s32 is of 7 digits, because the input is
+                    // never zero.
+                    buffer += (1 + (unsigned(two_digits >= 10) & unsigned(buffer[2] > '0')) * 2);
                 }
                 else {
-                    print_2_initial(two_digits);
-                    exponent += (2 * remaining_count + 1);
-                    for (int i = 0; i < remaining_count; ++i) {
-                        print_2(get_next_two_digits());
+                    // At least one of the remaining 6 digits are nonzero.
+                    // After this adjustment, now the first destination becomes buffer + 2.
+                    buffer += unsigned(two_digits >= 10);
+
+                    // Obtain the next two digits.
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    two_digits = std::uint32_t(prod >> 32);
+                    std::memcpy(buffer + 2, radix_100_table + two_digits * 2, 2);
+
+                    // Remaining 4 digits are all zero?
+                    if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 1'0000)) {
+                        buffer += (3 + unsigned(buffer[3] > '0'));
+                    }
+                    else {
+                        // At least one of the remaining 4 digits are nonzero.
+
+                        // Obtain the next two digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        two_digits = std::uint32_t(prod >> 32);
+                        std::memcpy(buffer + 4, radix_100_table + two_digits * 2, 2);
+
+                        // Remaining 2 digits are all zero?
+                        if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 100)) {
+                            buffer += (5 + unsigned(buffer[5] > '0'));
+                        }
+                        else {
+                            // Obtain the last two digits.
+                            prod = std::uint32_t(prod) * std::uint64_t(100);
+                            two_digits = std::uint32_t(prod >> 32);
+                            std::memcpy(buffer + 6, radix_100_table + two_digits * 2, 2);
+
+                            buffer += (7 + unsigned(buffer[7] > '0'));
+                        }
                     }
                 }
-            };
+            }
+            else if (s32 >= 1'0000) {
+                // 5 or 6 digits.
+                // 429497 = ceil(2^32 / 1'0000)
+                auto prod = s32 * std::uint64_t(429497);
+                auto two_digits = std::uint32_t(prod >> 32);
 
-            if (s32 < 100) {
-                if (s32 < 10) {
-                    // 1 digit.
-                    buffer[0] = char('0' + s32);
-                    buffer += 1;
+                // If s32 is of 6 digits, increase the exponent by 5.
+                // Otherwise, increase it by 4.
+                exponent += (4 + unsigned(two_digits >= 10));
+
+                // Write the first digit and the decimal point.
+                std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                // This third character may be overwritten later but we don't care.
+                buffer[2] = radix_100_table[two_digits * 2 + 1];
+
+                // Remaining 4 digits are all zero?
+                if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 1'0000)) {
+                    // The number of characters actually written is 1 or 3, similarly to the case of
+                    // 7 or 8 digits.
+                    buffer += (1 + (unsigned(two_digits >= 10) & unsigned(buffer[2] > '0')) * 2);
                 }
                 else {
-                    // 2 digits.
-                    print_2_initial(int(s32));
-                    exponent += 1;
+                    // At least one of the remaining 4 digits are nonzero.
+                    // After this adjustment, now the first destination becomes buffer + 2.
+                    buffer += unsigned(two_digits >= 10);
+
+                    // Obtain the next two digits.
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    two_digits = std::uint32_t(prod >> 32);
+                    std::memcpy(buffer + 2, radix_100_table + two_digits * 2, 2);
+
+                    // Remaining 2 digits are all zero?
+                    if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 100)) {
+                        buffer += (3 + unsigned(buffer[3] > '0'));
+                    }
+                    else {
+                        // Obtain the last two digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        two_digits = std::uint32_t(prod >> 32);
+                        std::memcpy(buffer + 4, radix_100_table + two_digits * 2, 2);
+
+                        buffer += (5 + unsigned(buffer[5] > '0'));
+                    }
+                }
+            }
+            else if (s32 >= 100) {
+                // 3 or 4 digits.
+                // 42949673 = ceil(2^32 / 100)
+                auto prod = s32 * std::uint64_t(42949673);
+                auto two_digits = std::uint32_t(prod >> 32);
+
+                // If s32 is of 4 digits, increase the exponent by 3.
+                // Otherwise, increase it by 2.
+                exponent += (2 + int(two_digits >= 10));
+
+                // Write the first digit and the decimal point.
+                std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                // This third character may be overwritten later but we don't care.
+                buffer[2] = radix_100_table[two_digits * 2 + 1];
+
+                // Remaining 2 digits are all zero?
+                if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 100)) {
+                    // The number of characters actually written is 1 or 3, similarly to the case of
+                    // 7 or 8 digits.
+                    buffer += (1 + (unsigned(two_digits >= 10) & unsigned(buffer[2] > '0')) * 2);
+                }
+                else {
+                    // At least one of the remaining 2 digits are nonzero.
+                    // After this adjustment, now the first destination becomes buffer + 2.
+                    buffer += unsigned(two_digits >= 10);
+
+                    // Obtain the last two digits.
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    two_digits = std::uint32_t(prod >> 32);
+                    std::memcpy(buffer + 2, radix_100_table + two_digits * 2, 2);
+
+                    buffer += (3 + unsigned(buffer[3] > '0'));
                 }
             }
             else {
-                if (s32 < 100'0000) {
-                    if (s32 < 1'0000) {
-                        // 3 or 4 digits.
-                        // 42949673 = ceil(2^32 / 100)
-                        print(42949673, 0, std::integral_constant<int, 1>{});
-                    }
-                    else {
-                        // 5 or 6 digits.
-                        // 429497 = ceil(2^32 / 1'0000)
-                        print(429497, 0, std::integral_constant<int, 2>{});
-                    }
-                }
-                else {
-                    if (s32 < 1'0000'0000) {
-                        // 7 or 8 digits.
-                        // 281474978 = ceil(2^48 / 100'0000) + 1
-                        print(281474978, 16, std::integral_constant<int, 3>{});
-                    }
-                    else {
-                        // 9 digits.
-                        // 1441151882 = ceil(2^57 / 1'0000'0000) + 1
-                        prod = s32 * std::uint64_t(1441151882);
-                        prod >>= 25;
-                        print_1_initial(int(prod >> 32));
-                        exponent += 8;
-                        print_2(get_next_two_digits());
-                        print_2(get_next_two_digits());
-                        print_2(get_next_two_digits());
-                        print_2(get_next_two_digits());
-                    }
-                }
+                // 1 or 2 digits.
+                // If s32 is of 2 digits, increase the exponent by 1.
+                exponent += int(s32 >= 10);
+
+                // Write the first digit and the decimal point.
+                std::memcpy(buffer, radix_100_head_table + s32 * 2, 2);
+                // This third character may be overwritten later but we don't care.
+                buffer[2] = radix_100_table[s32 * 2 + 1];
+
+                // The number of characters actually written is 1 or 3, similarly to the case of
+                // 7 or 8 digits.
+                buffer += (1 + (unsigned(s32 >= 10) & unsigned(buffer[2] > '0')) * 2);
             }
         }
 
@@ -177,7 +294,7 @@ namespace jkj::dragonbox {
                 buffer += 2;
             }
             else {
-                buffer[0] = (char)('0' + exponent);
+                buffer[0] = char('0' + exponent);
                 buffer += 1;
             }
 
@@ -187,46 +304,176 @@ namespace jkj::dragonbox {
         template <>
         char* to_chars<double, default_float_traits<double>>(std::uint64_t const significand,
                                                              int exponent, char* buffer) noexcept {
+            // Print significand by decomposing it into a 9-digit block and a 8-digit block.
             std::uint32_t first_block, second_block;
-            bool have_second_block;
+            bool no_second_block;
 
-            if (significand < 10'0000'0000) {
-                first_block = std::uint32_t(significand);
-                have_second_block = false;
-            }
-            else {
+            if (significand >= 1'0000'0000) {
                 first_block = std::uint32_t(significand / 1'0000'0000);
                 second_block = std::uint32_t(significand) - first_block * 1'0000'0000;
-                have_second_block = true;
+                exponent += 8;
+                no_second_block = (second_block == 0);
+            }
+            else {
+                first_block = std::uint32_t(significand);
+                no_second_block = true;
             }
 
-            // Print the first block of significand.
-            print_9_digits(first_block, exponent, buffer);
+            if (no_second_block) {
+                print_9_digits(first_block, exponent, buffer);
+            }
+            else {
+                // We proceed similarly to print_9_digits(), but since we do not need to remove
+                // trailing zeros, the procedure is a bit simpler.
+                if (first_block >= 1'0000'0000) {
+                    // The input is of 17 digits, thus there should be no trailing zero at all.
+                    // The first block is of 9 digits.
+                    // 1441151882 = ceil(2^57 / 1'0000'0000) + 1
+                    auto prod = first_block * std::uint64_t(1441151882);
+                    prod >>= 25;
+                    std::memcpy(buffer, radix_100_head_table + std::uint32_t(prod >> 32) * 2, 2);
 
-            // Print second block if necessary.
-            if (have_second_block) {
-                // 281474978 = ceil(2^48 / 100'0000) + 1
-                auto prod = second_block * std::uint64_t(281474978);
-                prod >>= 16;
-                prod += 1;
-                auto first_two_digits = std::uint32_t(prod >> 32);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 2, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 4, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 6, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 8, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
 
-                prod = std::uint32_t(prod) * std::uint64_t(100);
-                auto second_two_digits = std::uint32_t(prod >> 32);
+                    // The second block is of 8 digits.
+                    // 281474978 = ceil(2^48 / 100'0000) + 1
+                    prod = second_block * std::uint64_t(281474978);
+                    prod >>= 16;
+                    prod += 1;
+                    std::memcpy(buffer + 10, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 12, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 14, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                    prod = std::uint32_t(prod) * std::uint64_t(100);
+                    std::memcpy(buffer + 16, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
 
-                prod = std::uint32_t(prod) * std::uint64_t(100);
-                auto third_two_digits = std::uint32_t(prod >> 32);
+                    exponent += 8;
+                    buffer += 18;
+                }
+                else {
+                    if (first_block >= 100'0000) {
+                        // 7 or 8 digits.
+                        // 281474978 = ceil(2^48 / 100'0000) + 1
+                        auto prod = first_block * std::uint64_t(281474978);
+                        prod >>= 16;
+                        auto two_digits = std::uint32_t(prod >> 32);
 
-                prod = std::uint32_t(prod) * std::uint64_t(100);
-                auto fourth_two_digits = std::uint32_t(prod >> 32);
+                        std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                        buffer[2] = radix_100_table[two_digits * 2 + 1];
 
-                std::memcpy(buffer + 0, &radix_100_table[first_two_digits * 2], 2);
-                std::memcpy(buffer + 2, &radix_100_table[second_two_digits * 2], 2);
-                std::memcpy(buffer + 4, &radix_100_table[third_two_digits * 2], 2);
-                std::memcpy(buffer + 6, &radix_100_table[fourth_two_digits * 2], 2);
-                buffer += 8;
+                        exponent += (6 + unsigned(two_digits >= 10));
+                        buffer += unsigned(two_digits >= 10);
 
-                exponent += 8;
+                        // Print remaining 6 digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 2, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 4, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 6, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+
+                        buffer += 8;
+                    }
+                    else if (first_block >= 1'0000) {
+                        // 5 or 6 digits.
+                        // 429497 = ceil(2^32 / 1'0000)
+                        auto prod = first_block * std::uint64_t(429497);
+                        auto two_digits = std::uint32_t(prod >> 32);
+
+                        std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                        buffer[2] = radix_100_table[two_digits * 2 + 1];
+
+                        exponent += (4 + unsigned(two_digits >= 10));
+                        buffer += unsigned(two_digits >= 10);
+
+                        // Print remaining 4 digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 2, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 4, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+
+                        buffer += 6;
+                    }
+                    else if (first_block >= 100) {
+                        // 3 or 4 digits.
+                        // 42949673 = ceil(2^32 / 100)
+                        auto prod = first_block * std::uint64_t(42949673);
+                        auto two_digits = std::uint32_t(prod >> 32);
+
+                        std::memcpy(buffer, radix_100_head_table + two_digits * 2, 2);
+                        buffer[2] = radix_100_table[two_digits * 2 + 1];
+
+                        exponent += (2 + unsigned(two_digits >= 10));
+                        buffer += unsigned(two_digits >= 10);
+
+                        // Print remaining 2 digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        std::memcpy(buffer + 2, radix_100_table + std::uint32_t(prod >> 32) * 2, 2);
+
+                        buffer += 4;
+                    }
+                    else {
+                        // 1 or 2 digits.
+                        std::memcpy(buffer, radix_100_head_table + first_block * 2, 2);
+                        buffer[2] = radix_100_table[first_block * 2 + 1];
+
+                        exponent += unsigned(first_block >= 10);
+                        buffer += (2 + unsigned(first_block >= 10));
+                    }
+
+                    // Next, print the second block.
+                    // The second block is of 8 digits, but we may have trailing zeros.
+                    // 281474978 = ceil(2^48 / 100'0000) + 1
+                    auto prod = second_block * std::uint64_t(281474978);
+                    prod >>= 16;
+                    prod += 1;
+                    auto two_digits = std::uint32_t(prod >> 32);
+                    std::memcpy(buffer, radix_100_table + two_digits * 2, 2);
+
+                    // Remaining 6 digits are all zero?
+                    if (std::uint32_t(prod) <= std::uint32_t((std::uint64_t(1) << 32) / 100'0000)) {
+                        buffer += (1 + unsigned(buffer[1] > '0'));
+                    }
+                    else {
+                        // Obtain the next two digits.
+                        prod = std::uint32_t(prod) * std::uint64_t(100);
+                        two_digits = std::uint32_t(prod >> 32);
+                        std::memcpy(buffer + 2, radix_100_table + two_digits * 2, 2);
+
+                        // Remaining 4 digits are all zero?
+                        if (std::uint32_t(prod) <=
+                            std::uint32_t((std::uint64_t(1) << 32) / 1'0000)) {
+                            buffer += (3 + unsigned(buffer[3] > '0'));
+                        }
+                        else {
+                            // Obtain the next two digits.
+                            prod = std::uint32_t(prod) * std::uint64_t(100);
+                            two_digits = std::uint32_t(prod >> 32);
+                            std::memcpy(buffer + 4, radix_100_table + two_digits * 2, 2);
+
+                            // Remaining 2 digits are all zero?
+                            if (std::uint32_t(prod) <=
+                                std::uint32_t((std::uint64_t(1) << 32) / 100)) {
+                                buffer += (5 + unsigned(buffer[5] > '0'));
+                            }
+                            else {
+                                // Obtain the last two digits.
+                                prod = std::uint32_t(prod) * std::uint64_t(100);
+                                two_digits = std::uint32_t(prod >> 32);
+                                std::memcpy(buffer + 6, radix_100_table + two_digits * 2, 2);
+                                buffer += (7 + unsigned(buffer[7] > '0'));
+                            }
+                        }
+                    }
+                }
             }
 
             // Print exponent and return
@@ -243,12 +490,12 @@ namespace jkj::dragonbox {
             if (exponent >= 100) {
                 // d1 = exponent / 10; d2 = exponent % 10;
                 // 6554 = ceil(2^16 / 10)
-                auto prod = std::uint32_t(exponent) * 6554;
+                auto prod = std::uint32_t(exponent) * std::uint32_t(6554);
                 auto d1 = prod >> 16;
-                prod = std::uint16_t(prod) * 10;
-                auto d2 = prod >> 16;
+                prod = std::uint16_t(prod) * std::uint32_t(5); // * 10
+                auto d2 = prod >> 15;                          // >> 16
                 std::memcpy(buffer, &radix_100_table[d1 * 2], 2);
-                buffer[2] = (char)('0' + d2);
+                buffer[2] = char('0' + d2);
                 buffer += 3;
             }
             else if (exponent >= 10) {
@@ -256,7 +503,7 @@ namespace jkj::dragonbox {
                 buffer += 2;
             }
             else {
-                buffer[0] = (char)('0' + exponent);
+                buffer[0] = char('0' + exponent);
                 buffer += 1;
             }
 
