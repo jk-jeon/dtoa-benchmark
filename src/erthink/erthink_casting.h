@@ -24,6 +24,7 @@
 #include "erthink_defs.h"
 
 #include <type_traits>
+#undef __cpuid
 #if defined(__cpp_lib_bit_cast) && __cpp_lib_bit_cast >= 201806L
 #include <bit>
 #define HAVE_std_bit_cast 1
